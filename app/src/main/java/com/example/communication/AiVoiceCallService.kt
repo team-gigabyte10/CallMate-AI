@@ -54,6 +54,7 @@ class AiVoiceCallService : Service() {
 
         const val ACTION_START_AI_CALL = "com.callmate.ai.ACTION_START_AI_CALL"
         const val ACTION_STOP_AI_CALL = "com.callmate.ai.ACTION_STOP_AI_CALL"
+        const val ACTION_SPEAK_NOW = "com.callmate.ai.ACTION_SPEAK_NOW"
 
         const val EXTRA_TASK_ID = "extra_task_id"
         const val EXTRA_PHONE_NUMBER = "extra_phone_number"
@@ -128,6 +129,13 @@ class AiVoiceCallService : Service() {
             return START_NOT_STICKY
         }
 
+        if (intent?.action == ACTION_SPEAK_NOW) {
+            Log.d(TAG, "Manual Speak Now triggered")
+            activateSpeakerphoneBridge()
+            speakAiIntroMessage()
+            return START_NOT_STICKY
+        }
+
         taskId = intent?.getStringExtra(EXTRA_TASK_ID).orEmpty()
         phoneNumber = intent?.getStringExtra(EXTRA_PHONE_NUMBER).orEmpty()
         contactName = intent?.getStringExtra(EXTRA_CONTACT_NAME) ?: phoneNumber
@@ -138,7 +146,7 @@ class AiVoiceCallService : Service() {
             return START_NOT_STICKY
         }
 
-        startForeground(NOTIFICATION_ID, buildForegroundNotification("Initiating AI Call to $contactName..."))
+        startForeground(NOTIFICATION_ID, buildForegroundNotification("Dialing $contactName on SIM... Tap 'Speak Now' when answered"))
         registerCallStateListener()
         placeCellularSimCall()
 
@@ -150,12 +158,13 @@ class AiVoiceCallService : Service() {
             if (status == TextToSpeech.SUCCESS) {
                 isTtsReady = true
                 val preferences = PreferencesRepository(this)
-                val lang = if (preferences.language.value == "BN") Locale("bn", "BD") else Locale.US
+                val lang = if (preferences.language.value == "BN") Locale.forLanguageTag("bn-BD") else Locale.US
                 textToSpeech?.language = lang
 
                 val audioAttributes = AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .setLegacyStreamType(AudioManager.STREAM_VOICE_CALL)
                     .build()
                 textToSpeech?.setAudioAttributes(audioAttributes)
 
@@ -252,15 +261,15 @@ class AiVoiceCallService : Service() {
         Log.d(TAG, "Call State changed: $state")
         when (state) {
             TelephonyManager.CALL_STATE_OFFHOOK -> {
-                // Call is connected or active
+                // Call is dialing or connected
                 if (!isCallConnected) {
                     isCallConnected = true
-                    updateNotification("Call active. Connecting AI Acoustic Bridge...")
-                    // Wait ~4.5 seconds for carrier ringback and recipient to say "Hello"
+                    activateSpeakerphoneBridge()
+                    updateNotification("Call connected on SIM. Speaking in 9s (or tap 'Speak Now')...")
+                    // Wait 9 seconds for carrier connection, ringing, and recipient to pick up & say Hello
                     serviceScope.launch {
-                        delay(4500L)
+                        delay(9000L)
                         if (isCallConnected && !hasSpokenIntro) {
-                            activateSpeakerphoneBridge()
                             speakAiIntroMessage()
                         }
                     }
@@ -279,7 +288,17 @@ class AiVoiceCallService : Service() {
     private fun activateSpeakerphoneBridge() {
         try {
             audioManager?.let { am ->
-                am.mode = AudioManager.MODE_IN_COMMUNICATION
+                // Ensure audio mode is in-call so telephony routing stays connected
+                am.mode = AudioManager.MODE_IN_CALL
+
+                // Ensure microphone is unmuted
+                am.isMicrophoneMute = false
+
+                // Maximize in-call voice call and music volume
+                val maxVoiceVol = am.getStreamMaxVolume(AudioManager.STREAM_VOICE_CALL)
+                am.setStreamVolume(AudioManager.STREAM_VOICE_CALL, maxVoiceVol, 0)
+                val maxMusicVol = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                am.setStreamVolume(AudioManager.STREAM_MUSIC, maxMusicVol, 0)
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     val speaker = am.availableCommunicationDevices.find {
@@ -287,15 +306,11 @@ class AiVoiceCallService : Service() {
                     }
                     if (speaker != null) {
                         am.setCommunicationDevice(speaker)
-                    } else {
-                        @Suppress("DEPRECATION")
-                        am.isSpeakerphoneOn = true
                     }
-                } else {
-                    @Suppress("DEPRECATION")
-                    am.isSpeakerphoneOn = true
                 }
-                Log.d(TAG, "Acoustic Speakerphone bridge engaged")
+                @Suppress("DEPRECATION")
+                am.isSpeakerphoneOn = true
+                Log.d(TAG, "Acoustic Speakerphone bridge engaged (MODE_IN_CALL, max vol, mic unmuted)")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Could not switch speakerphone: ${e.message}")
@@ -319,7 +334,9 @@ class AiVoiceCallService : Service() {
     }
 
     private fun speakAiIntroMessage() {
+        if (hasSpokenIntro) return
         hasSpokenIntro = true
+        activateSpeakerphoneBridge()
         updateNotification("Speaking to $contactName on your behalf...")
 
         val preferences = PreferencesRepository(this)
@@ -327,23 +344,30 @@ class AiVoiceCallService : Service() {
 
         val spokenScript = if (isBengali) {
             buildString {
-                append("হ্যালো! আমি কলমেট এআই। আপনার সাথে কল করার ব্যক্তিটি বর্তমানে একটি গুরুত্বপূর্ণ মিটিংয়ে ব্যস্ত আছেন। ")
+                append("হ্যালো? ... হ্যালো! আমি কলমেট এআই সহকারী। ")
+                append("আপনার সাথে যিনি যোগাযোগ করতে চেয়েছিলেন তিনি বর্তমানে একটি গুরুত্বপূর্ণ মিটিংয়ে আছেন। ")
                 if (customMessage.isNotBlank()) {
-                    append("তিনি আপনাকে এই বার্তাটি পৌঁছে দিতে বলেছেন: $customMessage। ")
+                    append("তার বার্তাটি হলো: $customMessage। আমি আবার বলছি: $customMessage। ")
                 }
-                append("আপনার কোনো উত্তর থাকলে অনুগ্রহ করে বলুন, আমি তা সংরক্ষণ করে তাকে জানিয়ে দেব।")
+                append("অনুগ্রহ করে আপনার কোনো উত্তর থাকলে এখন বলুন, আমি তা সংরক্ষণ করে তাকে পৌঁছে দেব।")
             }
         } else {
             buildString {
-                append("Hello! This is CallMate AI. The person who scheduled this call is currently occupied in a meeting. ")
+                append("Hello? ... Hello! This is CallMate AI assistant. ")
+                append("The person calling you is currently occupied in an important meeting. ")
                 if (customMessage.isNotBlank()) {
-                    append("They asked me to deliver this message to you: $customMessage. ")
+                    append("Their message for you is: $customMessage. I repeat: $customMessage. ")
                 }
-                append("If you would like to leave a response, please speak now and I will deliver it to them.")
+                append("Please speak your response now and I will record it.")
             }
         }
 
-        textToSpeech?.speak(spokenScript, TextToSpeech.QUEUE_FLUSH, null, "utterance_intro")
+        val params = Bundle().apply {
+            putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_VOICE_CALL)
+            putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f)
+            putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "utterance_intro")
+        }
+        textToSpeech?.speak(spokenScript, TextToSpeech.QUEUE_FLUSH, params, "utterance_intro")
     }
 
     private fun startListeningForRecipientReply() {
@@ -422,7 +446,12 @@ class AiVoiceCallService : Service() {
             "Thank you. Your response has been recorded. I will deliver it to them immediately. Goodbye."
         }
 
-        textToSpeech?.speak(goodbyeScript, TextToSpeech.QUEUE_FLUSH, null, "utterance_goodbye")
+        val params = Bundle().apply {
+            putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_VOICE_CALL)
+            putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f)
+            putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "utterance_goodbye")
+        }
+        textToSpeech?.speak(goodbyeScript, TextToSpeech.QUEUE_FLUSH, params, "utterance_goodbye")
     }
 
     private fun endCallAndCleanup(userCancelled: Boolean) {
@@ -502,6 +531,16 @@ class AiVoiceCallService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val speakIntent = Intent(this, AiVoiceCallService::class.java).apply {
+            action = ACTION_SPEAK_NOW
+        }
+        val speakPendingIntent = PendingIntent.getService(
+            this,
+            103,
+            speakIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val appIntent = Intent(this, MainActivity::class.java)
         val appPendingIntent = PendingIntent.getActivity(
             this,
@@ -517,6 +556,7 @@ class AiVoiceCallService : Service() {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setOngoing(true)
             .setContentIntent(appPendingIntent)
+            .addAction(android.R.drawable.ic_media_play, "▶ Speak Now", speakPendingIntent)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "End Call", stopPendingIntent)
             .build()
     }
@@ -561,3 +601,4 @@ class AiVoiceCallService : Service() {
         super.onDestroy()
     }
 }
+
