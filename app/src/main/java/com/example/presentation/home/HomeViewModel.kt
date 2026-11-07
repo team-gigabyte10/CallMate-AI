@@ -146,6 +146,11 @@ class HomeViewModel @JvmOverloads constructor(
     }
 
     fun confirmProposal(proposal: AiTaskProposal) {
+        if (proposal.actionType != ActionType.REMINDER && proposal.contactPhone.isNullOrBlank()) {
+            _statusMessage.value = "Phone number is required to schedule a ${proposal.actionType.name.lowercase()}."
+            return
+        }
+
         viewModelScope.launch {
             val task = TaskEntity(
                 id = UUID.randomUUID().toString(),

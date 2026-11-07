@@ -130,6 +130,10 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
         scheduledAt: Long,
         recurrenceRule: String? = null
     ) {
+        if (actionType != ActionType.REMINDER && contactPhone.isNullOrBlank()) {
+            return
+        }
+
         viewModelScope.launch {
             val task = TaskEntity(
                 id = UUID.randomUUID().toString(),

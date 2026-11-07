@@ -3,6 +3,7 @@ package com.example.presentation.components
 import android.app.Activity
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -603,6 +604,7 @@ fun AiProposalDialog(
     var contactPhone by remember { mutableStateOf(proposal.contactPhone ?: "") }
     var messageBody by remember { mutableStateOf(proposal.messageBody ?: "") }
     var scheduledTimeMillis by remember { mutableStateOf(proposal.scheduledTimeMillis) }
+    var phoneError by remember { mutableStateOf(false) }
 
     val contactPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -612,7 +614,10 @@ fun AiProposalDialog(
                 val picked = ContactPickerHelper.resolveContact(context, uri)
                 if (picked != null) {
                     if (picked.name.isNotBlank()) contactName = picked.name
-                    if (picked.phoneNumber.isNotBlank()) contactPhone = picked.phoneNumber
+                    if (picked.phoneNumber.isNotBlank()) {
+                        contactPhone = picked.phoneNumber
+                        phoneError = false
+                    }
                 }
             }
         }
@@ -825,14 +830,22 @@ fun AiProposalDialog(
                     )
                     OutlinedTextField(
                         value = contactPhone,
-                        onValueChange = { contactPhone = it },
-                        label = { Text("Phone Number") },
+                        onValueChange = {
+                            contactPhone = it
+                            if (it.isNotBlank()) phoneError = false
+                        },
+                        label = { Text("Phone Number" + if (proposal.actionType != ActionType.REMINDER) " *" else "") },
+                        isError = phoneError,
+                        supportingText = if (phoneError) {
+                            { Text("Phone number is required", color = MaterialTheme.colorScheme.error) }
+                        } else null,
                         singleLine = true,
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(14.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                            errorBorderColor = MaterialTheme.colorScheme.error
                         ),
                         trailingIcon = {
                             IconButton(
@@ -1069,6 +1082,12 @@ fun AiProposalDialog(
                     Spacer(modifier = Modifier.width(10.dp))
                     Button(
                         onClick = {
+                            if (proposal.actionType != ActionType.REMINDER && contactPhone.isBlank()) {
+                                phoneError = true
+                                Toast.makeText(context, "Please select or enter a phone number", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
+                            phoneError = false
                             val updatedProposal = proposal.copy(
                                 title = title.ifBlank { proposal.title },
                                 contactName = contactName.ifBlank { null },

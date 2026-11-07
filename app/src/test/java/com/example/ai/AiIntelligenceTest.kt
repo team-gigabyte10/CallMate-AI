@@ -70,6 +70,21 @@ class AiIntelligenceTest {
 
         val validated = TaskValidator.validateProposal(rawProposal, sampleContacts)
         assertTrue(validated.missingFields.contains("contact"))
+        assertTrue(validated.missingFields.contains("phone"))
+        assertNotNull(validated.clarificationQuestion)
+    }
+
+    @Test
+    fun testTaskValidatorFlagsMissingPhoneForCall() {
+        val rawProposal = AiTaskProposal(
+            intent = "CREATE_CALL_REMINDER",
+            contactName = "Unknown Person",
+            contactPhone = null,
+            actionType = ActionType.CALL
+        )
+
+        val validated = TaskValidator.validateProposal(rawProposal, emptyList())
+        assertTrue(validated.missingFields.contains("phone"))
         assertNotNull(validated.clarificationQuestion)
     }
 

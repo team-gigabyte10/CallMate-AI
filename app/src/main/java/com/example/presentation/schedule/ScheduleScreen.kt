@@ -1,6 +1,7 @@
 package com.example.presentation.schedule
 
 import android.app.Activity
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -308,6 +309,7 @@ fun CreateTaskDialog(
     var messageBody by remember { mutableStateOf("") }
     var hoursAhead by remember { mutableStateOf("1") }
     var isRecurring by remember { mutableStateOf(false) }
+    var phoneError by remember { mutableStateOf(false) }
 
     val contactPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -317,7 +319,10 @@ fun CreateTaskDialog(
                 val picked = ContactPickerHelper.resolveContact(context, uri)
                 if (picked != null) {
                     if (picked.name.isNotBlank()) contactName = picked.name
-                    if (picked.phoneNumber.isNotBlank()) contactPhone = picked.phoneNumber
+                    if (picked.phoneNumber.isNotBlank()) {
+                        contactPhone = picked.phoneNumber
+                        phoneError = false
+                    }
                 }
             }
         }
@@ -429,14 +434,22 @@ fun CreateTaskDialog(
                     )
                     OutlinedTextField(
                         value = contactPhone,
-                        onValueChange = { contactPhone = it },
-                        label = { Text("Phone") },
+                        onValueChange = {
+                            contactPhone = it
+                            if (it.isNotBlank()) phoneError = false
+                        },
+                        label = { Text("Phone" + if (actionType != ActionType.REMINDER) " *" else "") },
+                        isError = phoneError,
+                        supportingText = if (phoneError) {
+                            { Text("Phone is required", color = MaterialTheme.colorScheme.error) }
+                        } else null,
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(14.dp),
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                            errorBorderColor = MaterialTheme.colorScheme.error
                         ),
                         trailingIcon = {
                             IconButton(
@@ -498,6 +511,12 @@ fun CreateTaskDialog(
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = {
+                            if (actionType != ActionType.REMINDER && contactPhone.isBlank()) {
+                                phoneError = true
+                                Toast.makeText(context, "Please select or enter a phone number", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
+                            phoneError = false
                             val hrs = hoursAhead.toDoubleOrNull() ?: 1.0
                             val scheduledTime = System.currentTimeMillis() + (hrs * 3600000L).toLong()
                             onCreate(

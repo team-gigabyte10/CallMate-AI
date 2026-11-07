@@ -37,6 +37,9 @@ object TaskValidator {
             if (resolvedName.isNullOrBlank()) {
                 if (!missingFields.contains("contact")) missingFields.add("contact")
             }
+            if (resolvedPhone.isNullOrBlank()) {
+                if (!missingFields.contains("phone")) missingFields.add("phone")
+            }
         }
 
         // 2. Schedule Validation
@@ -74,6 +77,8 @@ object TaskValidator {
         // 4. Clarification Question Generation if needed
         val clarification = when {
             rawProposal.clarificationQuestion != null -> rawProposal.clarificationQuestion
+            missingFields.contains("phone") ->
+                "Please select or provide a phone number for ${resolvedName ?: "this task"}."
             missingFields.contains("contact") ->
                 "Who would you like to ${rawProposal.actionType.name.lowercase()}? Please specify a contact or phone number."
             missingFields.contains("time") ->
