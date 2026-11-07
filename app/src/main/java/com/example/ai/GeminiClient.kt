@@ -36,8 +36,8 @@ class GeminiClient(
         val systemPrompt = AiPrompts.buildSystemPrompt(contacts)
         val payload = buildRequestPayload(systemPrompt, prompt)
 
-        // Try primary model (gemini-2.5-flash), with fallback to gemini-1.5-flash
-        val models = listOf("gemini-2.5-flash", "gemini-1.5-flash")
+        // Try primary model (gemini-3.5-flash), with fallback to gemini-flash-lite-latest and gemini-3.8-flash
+        val models = listOf("gemini-3.5-flash", "gemini-flash-lite-latest", "gemini-3.8-flash")
         var lastException: Exception? = null
 
         for (model in models) {

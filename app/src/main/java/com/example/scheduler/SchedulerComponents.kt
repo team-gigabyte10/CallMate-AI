@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.example.MainActivity
@@ -34,7 +35,11 @@ object AlarmScheduler {
         messageBody: String?,
         scheduledAt: Long
     ) {
-        if (scheduledAt <= System.currentTimeMillis()) return
+        val triggerTime = if (scheduledAt <= System.currentTimeMillis()) {
+            System.currentTimeMillis() + 1000L
+        } else {
+            scheduledAt
+        }
 
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
         val intent = Intent(context, AlarmReceiver::class.java).apply {
@@ -57,15 +62,15 @@ object AlarmScheduler {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 if (alarmManager.canScheduleExactAlarms()) {
-                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, scheduledAt, pendingIntent)
+                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
                 } else {
-                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, scheduledAt, pendingIntent)
+                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
                 }
             } else {
-                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, scheduledAt, pendingIntent)
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
             }
         } catch (_: SecurityException) {
-            alarmManager.set(AlarmManager.RTC_WAKEUP, scheduledAt, pendingIntent)
+            alarmManager.set(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
         }
     }
 
@@ -149,6 +154,10 @@ object ReminderNotification {
             ).apply {
                 description = "Notifications for scheduled calls, SMS, WhatsApp, and reminders"
                 enableVibration(true)
+                vibrationPattern = longArrayOf(0, 500, 200, 500)
+                enableLights(true)
+                setShowBadge(true)
+                lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
             }
             val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
@@ -192,9 +201,68 @@ object ReminderNotification {
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(actionIconText)
             .setContentText(contentText)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setAutoCancel(true)
             .setContentIntent(contentPendingIntent)
+
+        // Add Quick Direct Actions right on the heads-up notification
+        if (!phoneNumber.isNullOrBlank()) {
+            when (actionType) {
+                ActionType.CALL -> {
+                    val cleanNumber = phoneNumber.replace(Regex("[^0-9+]"), "")
+                    val callIntent = Intent(Intent.ACTION_DIAL).apply {
+                        data = Uri.parse("tel:$cleanNumber")
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    val callPendingIntent = PendingIntent.getActivity(
+                        context,
+                        (taskId + "_call").hashCode(),
+                        callIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
+                    builder.addAction(android.R.drawable.ic_menu_call, "Call Now", callPendingIntent)
+                }
+                ActionType.SMS -> {
+                    val cleanNumber = phoneNumber.replace(Regex("[^0-9+]"), "")
+                    val smsIntent = Intent(Intent.ACTION_SENDTO).apply {
+                        data = Uri.parse("smsto:$cleanNumber")
+                        putExtra("sms_body", messageBody.orEmpty())
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    val smsPendingIntent = PendingIntent.getActivity(
+                        context,
+                        (taskId + "_sms").hashCode(),
+                        smsIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
+                    builder.addAction(android.R.drawable.ic_menu_send, "Send SMS", smsPendingIntent)
+                }
+                ActionType.WHATSAPP -> {
+                    val cleanNumber = phoneNumber.replace(Regex("[^0-9]"), "")
+                    val encodedMsg = Uri.encode(messageBody.orEmpty())
+                    val waUri = if (cleanNumber.isNotBlank()) {
+                        "https://api.whatsapp.com/send?phone=$cleanNumber&text=$encodedMsg"
+                    } else {
+                        "https://api.whatsapp.com/send?text=$encodedMsg"
+                    }
+                    val waIntent = Intent(Intent.ACTION_VIEW, Uri.parse(waUri)).apply {
+                        setPackage("com.whatsapp")
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    val waPendingIntent = PendingIntent.getActivity(
+                        context,
+                        (taskId + "_wa").hashCode(),
+                        waIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
+                    builder.addAction(android.R.drawable.ic_dialog_email, "Open WhatsApp", waPendingIntent)
+                }
+                ActionType.REMINDER -> { /* Reminder uses contentPendingIntent */ }
+            }
+        }
 
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.notify(taskId.hashCode(), builder.build())
