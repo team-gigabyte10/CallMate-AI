@@ -110,5 +110,23 @@ class AiIntelligenceTest {
         assertEquals(ExecutionMode.ASSISTED, proposal.executionMode)
         assertNotNull(proposal.messageBody)
     }
+
+    @Test
+    fun testAutonomousAiMeetingCallProposalModeling() {
+        val proposal = AiTaskProposal(
+            intent = "MEETING_AUTO_CALL",
+            contactName = "Tanvir Ahmed",
+            contactPhone = "+8801912345678",
+            actionType = ActionType.CALL,
+            title = "Call Tanvir (Meeting Mode)",
+            messageBody = "I am in a client meeting, will call you back at 5 PM",
+            executionMode = ExecutionMode.AUTOMATIC
+        )
+
+        assertEquals(ActionType.CALL, proposal.actionType)
+        assertEquals(ExecutionMode.AUTOMATIC, proposal.executionMode)
+        assertEquals("+8801912345678", proposal.contactPhone)
+        assertNotNull(proposal.messageBody)
+    }
 }
 

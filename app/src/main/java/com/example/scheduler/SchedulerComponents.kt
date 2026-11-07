@@ -25,6 +25,7 @@ object AlarmScheduler {
     const val EXTRA_ACTION_TYPE = "extra_action_type"
     const val EXTRA_PHONE = "extra_phone"
     const val EXTRA_MESSAGE = "extra_message"
+    const val EXTRA_EXECUTION_MODE = "extra_execution_mode"
 
     fun scheduleTask(
         context: Context,
@@ -33,7 +34,8 @@ object AlarmScheduler {
         actionType: ActionType,
         phoneNumber: String?,
         messageBody: String?,
-        scheduledAt: Long
+        scheduledAt: Long,
+        executionMode: com.example.domain.model.ExecutionMode = com.example.domain.model.ExecutionMode.ASSISTED
     ) {
         val triggerTime = if (scheduledAt <= System.currentTimeMillis()) {
             System.currentTimeMillis() + 1000L
@@ -49,6 +51,7 @@ object AlarmScheduler {
             putExtra(EXTRA_ACTION_TYPE, actionType.name)
             putExtra(EXTRA_PHONE, phoneNumber)
             putExtra(EXTRA_MESSAGE, messageBody)
+            putExtra(EXTRA_EXECUTION_MODE, executionMode.name)
         }
 
         val requestCode = taskId.hashCode()
@@ -97,6 +100,7 @@ class AlarmReceiver : BroadcastReceiver() {
         val actionTypeName = intent.getStringExtra(AlarmScheduler.EXTRA_ACTION_TYPE) ?: "REMINDER"
         val phone = intent.getStringExtra(AlarmScheduler.EXTRA_PHONE)
         val message = intent.getStringExtra(AlarmScheduler.EXTRA_MESSAGE)
+        val modeName = intent.getStringExtra(AlarmScheduler.EXTRA_EXECUTION_MODE) ?: com.example.domain.model.ExecutionMode.ASSISTED.name
 
         val actionType = try {
             ActionType.valueOf(actionTypeName)
@@ -104,15 +108,32 @@ class AlarmReceiver : BroadcastReceiver() {
             ActionType.REMINDER
         }
 
-        // Show rich notification
-        ReminderNotification.showTaskNotification(
-            context = context,
-            taskId = taskId,
-            title = title,
-            actionType = actionType,
-            phoneNumber = phone,
-            messageBody = message
-        )
+        val executionMode = try {
+            com.example.domain.model.ExecutionMode.valueOf(modeName)
+        } catch (_: Exception) {
+            com.example.domain.model.ExecutionMode.ASSISTED
+        }
+
+        // Check if this is an Autonomous AI Meeting Call
+        if (actionType == ActionType.CALL && executionMode == com.example.domain.model.ExecutionMode.AUTOMATIC && !phone.isNullOrBlank()) {
+            com.example.communication.AiVoiceCallBridge.dispatchAiCall(
+                context = context,
+                taskId = taskId,
+                phoneNumber = phone,
+                contactName = title,
+                customMessage = message
+            )
+        } else {
+            // Show rich notification with quick action buttons
+            ReminderNotification.showTaskNotification(
+                context = context,
+                taskId = taskId,
+                title = title,
+                actionType = actionType,
+                phoneNumber = phone,
+                messageBody = message
+            )
+        }
 
         // Mark task status DUE in database
         val database = CallMateDatabase.getDatabase(context)
@@ -224,6 +245,31 @@ object ReminderNotification {
                         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                     )
                     builder.addAction(android.R.drawable.ic_menu_call, "Call Now", callPendingIntent)
+
+                    // Add Autonomous AI Call action button
+                    val aiCallIntent = Intent(context, com.example.communication.AiVoiceCallService::class.java).apply {
+                        action = com.example.communication.AiVoiceCallService.ACTION_START_AI_CALL
+                        putExtra(com.example.communication.AiVoiceCallService.EXTRA_TASK_ID, taskId)
+                        putExtra(com.example.communication.AiVoiceCallService.EXTRA_PHONE_NUMBER, phoneNumber)
+                        putExtra(com.example.communication.AiVoiceCallService.EXTRA_CONTACT_NAME, title)
+                        putExtra(com.example.communication.AiVoiceCallService.EXTRA_CUSTOM_MESSAGE, messageBody)
+                    }
+                    val aiCallPendingIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        PendingIntent.getForegroundService(
+                            context,
+                            (taskId + "_aicall").hashCode(),
+                            aiCallIntent,
+                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                        )
+                    } else {
+                        PendingIntent.getService(
+                            context,
+                            (taskId + "_aicall").hashCode(),
+                            aiCallIntent,
+                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                        )
+                    }
+                    builder.addAction(android.R.drawable.ic_btn_speak_now, "🤖 AI Call", aiCallPendingIntent)
                 }
                 ActionType.SMS -> {
                     val cleanNumber = phoneNumber.replace(Regex("[^0-9+]"), "")

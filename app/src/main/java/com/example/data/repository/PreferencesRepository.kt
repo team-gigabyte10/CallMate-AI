@@ -27,6 +27,17 @@ class PreferencesRepository(context: Context) {
     private val _aiModel = MutableStateFlow(prefs.getString("pref_ai_model", "Gemini 2.5 Flash") ?: "Gemini 2.5 Flash")
     val aiModel: StateFlow<String> = _aiModel.asStateFlow()
 
+    private val _autonomousCallEnabled = MutableStateFlow(prefs.getBoolean("pref_auto_call_enabled", true))
+    val autonomousCallEnabled: StateFlow<Boolean> = _autonomousCallEnabled.asStateFlow()
+
+    private val _autonomousCallGreeting = MutableStateFlow(
+        prefs.getString(
+            "pref_auto_call_greeting",
+            "Hello, this is CallMate AI calling on behalf of the user who is currently in a meeting."
+        ) ?: "Hello, this is CallMate AI calling on behalf of the user who is currently in a meeting."
+    )
+    val autonomousCallGreeting: StateFlow<String> = _autonomousCallGreeting.asStateFlow()
+
     fun setLanguage(lang: String) {
         prefs.edit().putString("pref_language", lang).apply()
         _language.value = lang
@@ -50,5 +61,15 @@ class PreferencesRepository(context: Context) {
     fun setAiModel(model: String) {
         prefs.edit().putString("pref_ai_model", model).apply()
         _aiModel.value = model
+    }
+
+    fun setAutonomousCallEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean("pref_auto_call_enabled", enabled).apply()
+        _autonomousCallEnabled.value = enabled
+    }
+
+    fun setAutonomousCallGreeting(greeting: String) {
+        prefs.edit().putString("pref_auto_call_greeting", greeting).apply()
+        _autonomousCallGreeting.value = greeting
     }
 }

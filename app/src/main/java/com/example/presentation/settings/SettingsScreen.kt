@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
@@ -77,6 +78,8 @@ fun SettingsScreen(
     val aiModel by viewModel.aiModel.collectAsStateWithLifecycle()
     val executions by viewModel.executions.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
+    val autonomousCallEnabled by viewModel.autonomousCallEnabled.collectAsStateWithLifecycle()
+    val autonomousCallGreeting by viewModel.autonomousCallGreeting.collectAsStateWithLifecycle()
 
     var showAuditLogDialog by remember { mutableStateOf(false) }
 
@@ -253,6 +256,68 @@ fun SettingsScreen(
                             checkedTrackColor = MaterialTheme.colorScheme.primary
                         )
                     )
+                }
+            }
+        }
+
+        // Autonomous AI Voice Calling (Meeting Mode - Architecture C)
+        item {
+            SettingsCard(
+                title = "Autonomous AI Calling (Meeting Mode)",
+                icon = Icons.Default.Call,
+                iconColor = MaterialTheme.colorScheme.primary
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Enable AI Voice Assistant Calling",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "When in a meeting, CallMate AI places cellular SIM calls, speaks on your behalf via the Acoustic Speakerphone bridge, and records recipient replies without any external cloud VoIP subscriptions.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = autonomousCallEnabled,
+                        onCheckedChange = { viewModel.setAutonomousCallEnabled(it) },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
+                }
+
+                if (autonomousCallEnabled) {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = "AI Default Call Introduction:",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "\"$autonomousCallGreeting\"",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
             }
         }

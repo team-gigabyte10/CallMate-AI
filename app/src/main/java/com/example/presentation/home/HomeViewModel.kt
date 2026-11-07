@@ -175,7 +175,8 @@ class HomeViewModel @JvmOverloads constructor(
                 actionType = task.actionType,
                 phoneNumber = task.contactPhone,
                 messageBody = task.messageBody,
-                scheduledAt = task.scheduledAt
+                scheduledAt = task.scheduledAt,
+                executionMode = task.executionMode
             )
 
             _aiProposal.value = null

@@ -25,6 +25,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     val voiceFeedback = preferences.voiceFeedback
     val defaultExecutionMode = preferences.defaultExecutionMode
     val aiModel = preferences.aiModel
+    val autonomousCallEnabled = preferences.autonomousCallEnabled
+    val autonomousCallGreeting = preferences.autonomousCallGreeting
 
     val executions: StateFlow<List<ExecutionEntity>> = repository.allExecutions
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -50,6 +52,14 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun setAiModel(model: String) {
         preferences.setAiModel(model)
+    }
+
+    fun setAutonomousCallEnabled(enabled: Boolean) {
+        preferences.setAutonomousCallEnabled(enabled)
+    }
+
+    fun setAutonomousCallGreeting(greeting: String) {
+        preferences.setAutonomousCallGreeting(greeting)
     }
 
     fun clearChatHistory() {

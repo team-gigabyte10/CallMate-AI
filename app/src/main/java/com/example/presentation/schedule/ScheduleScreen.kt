@@ -40,6 +40,8 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -265,8 +267,8 @@ fun ScheduleScreen(
     if (showCreateDialog) {
         CreateTaskDialog(
             onDismiss = { showCreateDialog = false },
-            onCreate = { title, actionType, contactName, phone, message, time, recurrence ->
-                viewModel.createTask(title, actionType, contactName, phone, message, time, recurrence)
+            onCreate = { title, actionType, contactName, phone, message, time, recurrence, mode ->
+                viewModel.createTask(title, actionType, contactName, phone, message, time, recurrence, mode)
                 showCreateDialog = false
             }
         )
@@ -299,7 +301,7 @@ fun ActionFilterChip(
 @Composable
 fun CreateTaskDialog(
     onDismiss: () -> Unit,
-    onCreate: (String, ActionType, String?, String?, String?, Long, String?) -> Unit
+    onCreate: (String, ActionType, String?, String?, String?, Long, String?, com.example.domain.model.ExecutionMode) -> Unit
 ) {
     val context = LocalContext.current
     var title by remember { mutableStateOf("") }
@@ -310,6 +312,7 @@ fun CreateTaskDialog(
     var hoursAhead by remember { mutableStateOf("1") }
     var isRecurring by remember { mutableStateOf(false) }
     var phoneError by remember { mutableStateOf(false) }
+    var isAutonomousCall by remember { mutableStateOf(false) }
 
     val contactPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -467,6 +470,66 @@ fun CreateTaskDialog(
                     )
                 }
 
+                if (actionType == ActionType.CALL) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (isAutonomousCall) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            if (isAutonomousCall) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "🤖 AI Voice Call (Meeting Mode)",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "AI dials via SIM, speaks message & listens",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Switch(
+                                    checked = isAutonomousCall,
+                                    onCheckedChange = { isAutonomousCall = it },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = Color.White,
+                                        checkedTrackColor = MaterialTheme.colorScheme.primary
+                                    )
+                                )
+                            }
+
+                            if (isAutonomousCall) {
+                                Spacer(modifier = Modifier.height(10.dp))
+                                OutlinedTextField(
+                                    value = messageBody,
+                                    onValueChange = { messageBody = it },
+                                    label = { Text("What AI should say to caller") },
+                                    placeholder = { Text("e.g. I am in a meeting, call back at 5 PM") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    maxLines = 3,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+
                 if (actionType == ActionType.SMS || actionType == ActionType.WHATSAPP) {
                     Spacer(modifier = Modifier.height(10.dp))
                     OutlinedTextField(
@@ -519,6 +582,11 @@ fun CreateTaskDialog(
                             phoneError = false
                             val hrs = hoursAhead.toDoubleOrNull() ?: 1.0
                             val scheduledTime = System.currentTimeMillis() + (hrs * 3600000L).toLong()
+                            val mode = if (actionType == ActionType.CALL && isAutonomousCall) {
+                                com.example.domain.model.ExecutionMode.AUTOMATIC
+                            } else {
+                                com.example.domain.model.ExecutionMode.ASSISTED
+                            }
                             onCreate(
                                 title.ifBlank { "${actionType.name} with ${contactName.ifBlank { "Contact" }}" },
                                 actionType,
@@ -526,7 +594,8 @@ fun CreateTaskDialog(
                                 contactPhone.ifBlank { null },
                                 messageBody.ifBlank { null },
                                 scheduledTime,
-                                if (isRecurring) "DAILY" else null
+                                if (isRecurring) "DAILY" else null,
+                                mode
                             )
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),

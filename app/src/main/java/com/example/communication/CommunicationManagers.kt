@@ -93,6 +93,14 @@ class ExecutionPolicy(private val repository: CallMateRepository) {
                 if (phoneNumber.isNullOrBlank()) {
                     outcome = "FAILED_NO_PHONE_NUMBER"
                     Toast.makeText(context, "No phone number available for this call", Toast.LENGTH_SHORT).show()
+                } else if (mode == ExecutionMode.AUTOMATIC) {
+                    success = AiVoiceCallBridge.dispatchAiCall(
+                        context = context,
+                        taskId = taskId,
+                        phoneNumber = phoneNumber,
+                        customMessage = messageBody
+                    )
+                    outcome = if (success) "AI_CALL_DISPATCHED" else "AI_CALL_FAILED"
                 } else {
                     success = CallManager.launchDialer(context, phoneNumber)
                     outcome = if (success) "DIALER_LAUNCHED" else "DIALER_FAILED"

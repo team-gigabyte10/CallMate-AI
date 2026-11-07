@@ -128,7 +128,8 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
         contactPhone: String?,
         messageBody: String?,
         scheduledAt: Long,
-        recurrenceRule: String? = null
+        recurrenceRule: String? = null,
+        executionMode: ExecutionMode = ExecutionMode.ASSISTED
     ) {
         if (actionType != ActionType.REMINDER && contactPhone.isNullOrBlank()) {
             return
@@ -143,7 +144,7 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
                 contactPhone = contactPhone?.ifBlank { null },
                 messageBody = messageBody?.ifBlank { null },
                 scheduledAt = scheduledAt,
-                executionMode = ExecutionMode.ASSISTED,
+                executionMode = executionMode,
                 status = TaskStatus.SCHEDULED,
                 recurrenceRule = recurrenceRule
             )
@@ -155,7 +156,8 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
                 actionType = task.actionType,
                 phoneNumber = task.contactPhone,
                 messageBody = task.messageBody,
-                scheduledAt = task.scheduledAt
+                scheduledAt = task.scheduledAt,
+                executionMode = task.executionMode
             )
         }
     }

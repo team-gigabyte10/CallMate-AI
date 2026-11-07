@@ -53,6 +53,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -162,13 +164,31 @@ fun TaskCard(
                 Spacer(modifier = Modifier.width(14.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = task.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = task.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        if (task.actionType == ActionType.CALL && task.executionMode == com.example.domain.model.ExecutionMode.AUTOMATIC) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = BrandIndigo.copy(alpha = 0.15f)
+                            ) {
+                                Text(
+                                    text = "🤖 AI Call",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = BrandIndigo,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
                     if (!task.contactName.isNullOrBlank()) {
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
@@ -311,7 +331,7 @@ fun TaskCard(
                             contentPadding = PaddingValues(horizontal = 16.dp)
                         ) {
                             val actionLabel = when (task.actionType) {
-                                ActionType.CALL -> "Call"
+                                ActionType.CALL -> if (task.executionMode == com.example.domain.model.ExecutionMode.AUTOMATIC) "🤖 AI Call" else "Call"
                                 ActionType.SMS -> "Send"
                                 ActionType.WHATSAPP -> "WhatsApp"
                                 ActionType.REMINDER -> "View"
@@ -605,6 +625,9 @@ fun AiProposalDialog(
     var messageBody by remember { mutableStateOf(proposal.messageBody ?: "") }
     var scheduledTimeMillis by remember { mutableStateOf(proposal.scheduledTimeMillis) }
     var phoneError by remember { mutableStateOf(false) }
+    var isAutonomousCall by remember {
+        mutableStateOf(proposal.executionMode == com.example.domain.model.ExecutionMode.AUTOMATIC)
+    }
 
     val contactPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -863,6 +886,85 @@ fun AiProposalDialog(
                     )
                 }
 
+                // Autonomous AI Voice Call Toggle (Meeting Mode)
+                if (proposal.actionType == ActionType.CALL) {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (isAutonomousCall) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            if (isAutonomousCall) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    modifier = Modifier.weight(1f),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Call,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text = "🤖 AI Voice Call (Meeting Mode)",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = "AI speaks for you via SIM & transcribes reply",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                                Switch(
+                                    checked = isAutonomousCall,
+                                    onCheckedChange = { isAutonomousCall = it },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = Color.White,
+                                        checkedTrackColor = MaterialTheme.colorScheme.primary
+                                    )
+                                )
+                            }
+
+                            if (isAutonomousCall) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = "AI SPOKEN MESSAGE",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                OutlinedTextField(
+                                    value = messageBody,
+                                    onValueChange = { messageBody = it },
+                                    placeholder = { Text("What message should AI speak to the caller?") },
+                                    maxLines = 3,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+
                 // Message Body (if SMS or WhatsApp)
                 if (proposal.actionType == ActionType.SMS || proposal.actionType == ActionType.WHATSAPP) {
                     Spacer(modifier = Modifier.height(12.dp))
@@ -1094,6 +1196,11 @@ fun AiProposalDialog(
                                 contactPhone = contactPhone.ifBlank { null },
                                 messageBody = messageBody.ifBlank { null },
                                 actionType = proposal.actionType,
+                                executionMode = if (proposal.actionType == ActionType.CALL && isAutonomousCall) {
+                                    com.example.domain.model.ExecutionMode.AUTOMATIC
+                                } else {
+                                    proposal.executionMode
+                                },
                                 scheduledTimeMillis = scheduledTimeMillis
                             )
                             onConfirm(updatedProposal)
