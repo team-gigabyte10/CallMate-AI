@@ -1,6 +1,8 @@
 package com.example.presentation.components
 
 import android.app.Activity
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -12,6 +14,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,8 +33,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContactPhone
 import androidx.compose.material.icons.filled.Delete
@@ -78,6 +84,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.core.util.ContactPickerHelper
 import com.example.core.util.TimeUtils
+import java.util.Calendar
 import com.example.data.local.entities.ContactEntity
 import com.example.data.local.entities.TaskEntity
 import com.example.domain.model.ActionType
@@ -595,6 +602,7 @@ fun AiProposalDialog(
     var contactName by remember { mutableStateOf(proposal.contactName ?: "") }
     var contactPhone by remember { mutableStateOf(proposal.contactPhone ?: "") }
     var messageBody by remember { mutableStateOf(proposal.messageBody ?: "") }
+    var scheduledTimeMillis by remember { mutableStateOf(proposal.scheduledTimeMillis) }
 
     val contactPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -610,11 +618,52 @@ fun AiProposalDialog(
         }
     }
 
-    val (actionBadgeColor, actionBadgeBg, actionLabel) = when (proposal.actionType) {
-        ActionType.CALL -> Triple(CallEmerald, CallEmeraldContainer, "CALL")
-        ActionType.SMS -> Triple(SmsSky, SmsSkyContainer, "SMS")
-        ActionType.WHATSAPP -> Triple(WhatsAppMint, WhatsAppMintContainer, "WHATSAPP")
-        ActionType.REMINDER -> Triple(ReminderAmber, ReminderAmberContainer, "REMINDER")
+    val (actionBadgeColor, actionBadgeBg, actionLabel, actionIcon) = when (proposal.actionType) {
+        ActionType.CALL -> Quadruple(CallEmerald, CallEmeraldContainer, "CALL", Icons.Default.Call)
+        ActionType.SMS -> Quadruple(SmsSky, SmsSkyContainer, "SMS", Icons.AutoMirrored.Filled.Send)
+        ActionType.WHATSAPP -> Quadruple(WhatsAppMint, WhatsAppMintContainer, "WHATSAPP", Icons.AutoMirrored.Outlined.Chat)
+        ActionType.REMINDER -> Quadruple(ReminderAmber, ReminderAmberContainer, "REMINDER", Icons.Default.Notifications)
+    }
+
+    fun showDatePicker() {
+        val cal = Calendar.getInstance().apply { timeInMillis = scheduledTimeMillis }
+        DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                val updatedCal = Calendar.getInstance().apply {
+                    timeInMillis = scheduledTimeMillis
+                    set(Calendar.YEAR, year)
+                    set(Calendar.MONTH, month)
+                    set(Calendar.DAY_OF_MONTH, dayOfMonth)
+                }
+                scheduledTimeMillis = updatedCal.timeInMillis
+            },
+            cal.get(Calendar.YEAR),
+            cal.get(Calendar.MONTH),
+            cal.get(Calendar.DAY_OF_MONTH)
+        ).apply {
+            datePicker.minDate = System.currentTimeMillis() - 1000
+            show()
+        }
+    }
+
+    fun showTimePicker() {
+        val cal = Calendar.getInstance().apply { timeInMillis = scheduledTimeMillis }
+        TimePickerDialog(
+            context,
+            { _, hourOfDay, minute ->
+                val updatedCal = Calendar.getInstance().apply {
+                    timeInMillis = scheduledTimeMillis
+                    set(Calendar.HOUR_OF_DAY, hourOfDay)
+                    set(Calendar.MINUTE, minute)
+                    set(Calendar.SECOND, 0)
+                }
+                scheduledTimeMillis = updatedCal.timeInMillis
+            },
+            cal.get(Calendar.HOUR_OF_DAY),
+            cal.get(Calendar.MINUTE),
+            false
+        ).show()
     }
 
     Dialog(onDismissRequest = onDismiss) {
@@ -628,7 +677,9 @@ fun AiProposalDialog(
                 modifier = Modifier
                     .padding(22.dp)
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
             ) {
+                // Header Row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -637,7 +688,7 @@ fun AiProposalDialog(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
-                                .size(40.dp)
+                                .size(42.dp)
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(AiGradient),
                             contentAlignment = Alignment.Center
@@ -646,7 +697,7 @@ fun AiProposalDialog(
                                 imageVector = Icons.Default.Schedule,
                                 contentDescription = null,
                                 tint = Color.White,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(22.dp)
                             )
                         }
                         Spacer(modifier = Modifier.width(12.dp))
@@ -666,7 +717,7 @@ fun AiProposalDialog(
                                     color = actionBadgeColor,
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
                                 )
                             }
                         }
@@ -677,13 +728,39 @@ fun AiProposalDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(18.dp))
 
-                // Title Input
+                // Title Input with Action Icon & Clear button
+                Text(
+                    text = "TASK TITLE",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(6.dp))
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Task Title") },
+                    placeholder = { Text("Enter task title or summary...") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = actionIcon,
+                            contentDescription = null,
+                            tint = actionBadgeColor,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    },
+                    trailingIcon = {
+                        if (title.isNotBlank()) {
+                            IconButton(onClick = { title = "" }) {
+                                Icon(
+                                    imageVector = Icons.Default.Clear,
+                                    contentDescription = "Clear Title",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(14.dp),
@@ -693,7 +770,7 @@ fun AiProposalDialog(
                     )
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 // Contact Section with "Select from Contacts" picker
                 Row(
@@ -775,11 +852,17 @@ fun AiProposalDialog(
 
                 // Message Body (if SMS or WhatsApp)
                 if (proposal.actionType == ActionType.SMS || proposal.actionType == ActionType.WHATSAPP) {
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "MESSAGE PREVIEW",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
                     OutlinedTextField(
                         value = messageBody,
                         onValueChange = { messageBody = it },
-                        label = { Text("Message Body") },
+                        placeholder = { Text("Message to send...") },
                         maxLines = 3,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp),
@@ -790,35 +873,189 @@ fun AiProposalDialog(
                     )
                 }
 
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // SCHEDULE DATE & TIME SECTION
+                Text(
+                    text = "SCHEDULE DATE & TIME",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Interactive Date & Time Picker Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // Date Selector Pill
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { showDatePicker() }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CalendarToday,
+                                contentDescription = "Pick Date",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "Date",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = TimeUtils.formatDateOnly(scheduledTimeMillis),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+
+                    // Time Selector Pill
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { showTimePicker() }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AccessTime,
+                                contentDescription = "Pick Time",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "Time",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = TimeUtils.formatTimeOnly(scheduledTimeMillis),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Quick Adjustment Chips Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    val presets = listOf(
+                        "+15m" to (15 * 60 * 1000L),
+                        "+1h" to (60 * 60 * 1000L),
+                        "+3h" to (3 * 60 * 60 * 1000L)
+                    )
+
+                    presets.forEach { (label, delta) ->
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable {
+                                    scheduledTimeMillis = System.currentTimeMillis() + delta
+                                }
+                        ) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(vertical = 7.dp)
+                            )
+                        }
+                    }
+
+                    // Tomorrow 10 AM Preset
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier
+                            .weight(1.4f)
+                            .clickable {
+                                val cal = Calendar.getInstance().apply {
+                                    add(Calendar.DAY_OF_YEAR, 1)
+                                    set(Calendar.HOUR_OF_DAY, 10)
+                                    set(Calendar.MINUTE, 0)
+                                    set(Calendar.SECOND, 0)
+                                }
+                                scheduledTimeMillis = cal.timeInMillis
+                            }
+                    ) {
+                        Text(
+                            text = "Tomorrow 10 AM",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(vertical = 7.dp)
+                        )
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Scheduled Time display
+                // Scheduled Time Live Summary Card
                 Surface(
                     shape = RoundedCornerShape(14.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
-                        modifier = Modifier.padding(14.dp),
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.AccessTime,
+                            imageVector = Icons.Default.Schedule,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(16.dp)
                         )
-                        Spacer(modifier = Modifier.width(10.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Due: ${TimeUtils.formatDateTime(proposal.scheduledTimeMillis)}",
-                            style = MaterialTheme.typography.bodyMedium,
+                            text = "Scheduled for: ${TimeUtils.formatDateTime(scheduledTimeMillis)}",
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(22.dp))
 
                 // Action Buttons
                 Row(
@@ -833,11 +1070,12 @@ fun AiProposalDialog(
                     Button(
                         onClick = {
                             val updatedProposal = proposal.copy(
-                                title = title,
+                                title = title.ifBlank { proposal.title },
                                 contactName = contactName.ifBlank { null },
                                 contactPhone = contactPhone.ifBlank { null },
                                 messageBody = messageBody.ifBlank { null },
-                                actionType = proposal.actionType
+                                actionType = proposal.actionType,
+                                scheduledTimeMillis = scheduledTimeMillis
                             )
                             onConfirm(updatedProposal)
                         },
@@ -852,3 +1090,10 @@ fun AiProposalDialog(
         }
     }
 }
+
+private data class Quadruple<A, B, C, D>(
+    val first: A,
+    val second: B,
+    val third: C,
+    val fourth: D
+)
