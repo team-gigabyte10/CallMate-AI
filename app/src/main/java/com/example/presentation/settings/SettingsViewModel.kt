@@ -59,10 +59,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun resetSampleData() {
+    fun clearAllData() {
         viewModelScope.launch {
-            repository.resetToSampleData()
-            _message.value = "Reset to sample contacts and tasks"
+            repository.clearAllData()
+            _message.value = "All tasks, contacts, and chat data cleared"
         }
     }
 

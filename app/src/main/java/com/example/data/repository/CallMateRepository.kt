@@ -118,7 +118,9 @@ class CallMateRepository(private val database: CallMateDatabase) {
     suspend fun insertMessage(message: MessageEntity) =
         messageDao.insertMessage(message)
 
-    suspend fun resetToSampleData() {
-        CallMateDatabase.populateInitialData(database)
+    suspend fun clearAllData() {
+        taskDao.deleteAllTasks()
+        contactDao.deleteAllContacts()
+        conversationDao.clearConversations()
     }
 }

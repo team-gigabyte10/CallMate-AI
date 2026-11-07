@@ -55,6 +55,9 @@ interface TaskDao {
 
     @Query("DELETE FROM tasks WHERE id = :id")
     suspend fun deleteTaskById(id: String)
+
+    @Query("DELETE FROM tasks")
+    suspend fun deleteAllTasks()
 }
 
 @Dao
@@ -88,6 +91,9 @@ interface ContactDao {
 
     @Delete
     suspend fun deleteContact(contact: ContactEntity)
+
+    @Query("DELETE FROM contacts")
+    suspend fun deleteAllContacts()
 }
 
 @Dao

@@ -1,6 +1,7 @@
 package com.example.presentation.contacts
 
 import android.Manifest
+import android.app.Activity
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -57,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.core.util.ContactPickerHelper
 import com.example.data.local.entities.ContactEntity
 import com.example.presentation.components.ContactCard
 import com.example.ui.theme.AiGradient
@@ -74,7 +76,25 @@ fun ContactsScreen(
     val importStatus by viewModel.importStatus.collectAsStateWithLifecycle()
 
     var showAddDialog by remember { mutableStateOf(false) }
+    var newContactName by remember { mutableStateOf("") }
+    var newContactPhone by remember { mutableStateOf("") }
+    var newContactNickname by remember { mutableStateOf("") }
     var editingNicknameContact by remember { mutableStateOf<ContactEntity?>(null) }
+
+    val contactPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            result.data?.data?.let { uri ->
+                val picked = ContactPickerHelper.resolveContact(context, uri)
+                if (picked != null) {
+                    newContactName = picked.name
+                    newContactPhone = picked.phoneNumber
+                    showAddDialog = true
+                }
+            }
+        }
+    }
 
     val contactsPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -97,7 +117,12 @@ fun ContactsScreen(
         modifier = modifier.fillMaxSize(),
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { showAddDialog = true },
+                onClick = {
+                    newContactName = ""
+                    newContactPhone = ""
+                    newContactNickname = ""
+                    showAddDialog = true
+                },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = Color.White,
                 shape = RoundedCornerShape(18.dp),
@@ -264,10 +289,6 @@ fun ContactsScreen(
 
     // Add Contact Dialog
     if (showAddDialog) {
-        var name by remember { mutableStateOf("") }
-        var phone by remember { mutableStateOf("") }
-        var nickname by remember { mutableStateOf("") }
-
         Dialog(onDismissRequest = { showAddDialog = false }) {
             Surface(
                 shape = RoundedCornerShape(28.dp),
@@ -281,11 +302,31 @@ fun ContactsScreen(
                         style = MaterialTheme.typography.titleLarge
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // One-click Phone Contact Selector Button
+                    OutlinedButton(
+                        onClick = {
+                            contactPickerLauncher.launch(ContactPickerHelper.createPickContactIntent())
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ContactPhone,
+                            contentDescription = "Pick Contact",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Select from Phone Contacts", style = MaterialTheme.typography.labelMedium)
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
 
                     OutlinedTextField(
-                        value = name,
-                        onValueChange = { name = it },
+                        value = newContactName,
+                        onValueChange = { newContactName = it },
                         label = { Text("Full Name") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp),
@@ -299,8 +340,8 @@ fun ContactsScreen(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     OutlinedTextField(
-                        value = phone,
-                        onValueChange = { phone = it },
+                        value = newContactPhone,
+                        onValueChange = { newContactPhone = it },
                         label = { Text("Phone Number") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp),
@@ -308,14 +349,27 @@ fun ContactsScreen(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                        )
+                        ),
+                        trailingIcon = {
+                            IconButton(
+                                onClick = {
+                                    contactPickerLauncher.launch(ContactPickerHelper.createPickContactIntent())
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ContactPhone,
+                                    contentDescription = "Select from Contacts",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
                     )
 
                     Spacer(modifier = Modifier.height(10.dp))
 
                     OutlinedTextField(
-                        value = nickname,
-                        onValueChange = { nickname = it },
+                        value = newContactNickname,
+                        onValueChange = { newContactNickname = it },
                         label = { Text("Voice Nickname (e.g. \"Ammu\")") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp),
@@ -339,8 +393,8 @@ fun ContactsScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         Button(
                             onClick = {
-                                if (name.isNotBlank() && phone.isNotBlank()) {
-                                    viewModel.saveContact(name, phone, nickname.ifBlank { null }, false)
+                                if (newContactName.isNotBlank() && newContactPhone.isNotBlank()) {
+                                    viewModel.saveContact(newContactName, newContactPhone, newContactNickname.ifBlank { null }, false)
                                     showAddDialog = false
                                 }
                             },

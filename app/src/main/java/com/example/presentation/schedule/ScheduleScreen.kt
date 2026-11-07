@@ -1,5 +1,8 @@
 package com.example.presentation.schedule
 
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -23,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.ContactPhone
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -48,12 +52,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.core.util.ContactPickerHelper
 import com.example.domain.model.ActionType
 import com.example.presentation.components.TaskCard
 import com.example.ui.theme.AiGradient
@@ -294,6 +300,7 @@ fun CreateTaskDialog(
     onDismiss: () -> Unit,
     onCreate: (String, ActionType, String?, String?, String?, Long, String?) -> Unit
 ) {
+    val context = LocalContext.current
     var title by remember { mutableStateOf("") }
     var actionType by remember { mutableStateOf(ActionType.CALL) }
     var contactName by remember { mutableStateOf("") }
@@ -301,6 +308,20 @@ fun CreateTaskDialog(
     var messageBody by remember { mutableStateOf("") }
     var hoursAhead by remember { mutableStateOf("1") }
     var isRecurring by remember { mutableStateOf(false) }
+
+    val contactPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            result.data?.data?.let { uri ->
+                val picked = ContactPickerHelper.resolveContact(context, uri)
+                if (picked != null) {
+                    if (picked.name.isNotBlank()) contactName = picked.name
+                    if (picked.phoneNumber.isNotBlank()) contactPhone = picked.phoneNumber
+                }
+            }
+        }
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -357,7 +378,41 @@ fun CreateTaskDialog(
                     )
                 )
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Contact Details Header with "Pick Contact" button
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "CONTACT DETAILS",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    TextButton(
+                        onClick = {
+                            contactPickerLauncher.launch(ContactPickerHelper.createPickContactIntent())
+                        },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ContactPhone,
+                            contentDescription = "Pick Contact",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Select from Contacts",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
@@ -382,7 +437,20 @@ fun CreateTaskDialog(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                        )
+                        ),
+                        trailingIcon = {
+                            IconButton(
+                                onClick = {
+                                    contactPickerLauncher.launch(ContactPickerHelper.createPickContactIntent())
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ContactPhone,
+                                    contentDescription = "Select from Contacts",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
                     )
                 }
 

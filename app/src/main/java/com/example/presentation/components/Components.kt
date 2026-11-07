@@ -1,5 +1,8 @@
 package com.example.presentation.components
 
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -29,6 +32,7 @@ import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContactPhone
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
@@ -64,6 +68,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -71,6 +76,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.example.core.util.ContactPickerHelper
 import com.example.core.util.TimeUtils
 import com.example.data.local.entities.ContactEntity
 import com.example.data.local.entities.TaskEntity
@@ -584,11 +590,32 @@ fun AiProposalDialog(
     onConfirm: (AiTaskProposal) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
     var title by remember { mutableStateOf(proposal.title) }
     var contactName by remember { mutableStateOf(proposal.contactName ?: "") }
     var contactPhone by remember { mutableStateOf(proposal.contactPhone ?: "") }
     var messageBody by remember { mutableStateOf(proposal.messageBody ?: "") }
-    var actionType by remember { mutableStateOf(proposal.actionType) }
+
+    val contactPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            result.data?.data?.let { uri ->
+                val picked = ContactPickerHelper.resolveContact(context, uri)
+                if (picked != null) {
+                    if (picked.name.isNotBlank()) contactName = picked.name
+                    if (picked.phoneNumber.isNotBlank()) contactPhone = picked.phoneNumber
+                }
+            }
+        }
+    }
+
+    val (actionBadgeColor, actionBadgeBg, actionLabel) = when (proposal.actionType) {
+        ActionType.CALL -> Triple(CallEmerald, CallEmeraldContainer, "CALL")
+        ActionType.SMS -> Triple(SmsSky, SmsSkyContainer, "SMS")
+        ActionType.WHATSAPP -> Triple(WhatsAppMint, WhatsAppMintContainer, "WHATSAPP")
+        ActionType.REMINDER -> Triple(ReminderAmber, ReminderAmberContainer, "REMINDER")
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -623,11 +650,26 @@ fun AiProposalDialog(
                             )
                         }
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "AI Task Proposal",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                        Column {
+                            Text(
+                                text = "AI Task Proposal",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = actionBadgeBg
+                            ) {
+                                Text(
+                                    text = actionLabel,
+                                    color = actionBadgeColor,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
                     }
 
                     IconButton(onClick = onDismiss) {
@@ -636,39 +678,6 @@ fun AiProposalDialog(
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-
-                // Action Type Selector Chips
-                Text(
-                    text = "ACTION TYPE",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    ActionType.values().forEach { type ->
-                        val isSelected = actionType == type
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier
-                                .weight(1f)
-                                .clickable { actionType = type }
-                        ) {
-                            Text(
-                                text = type.name,
-                                color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
-                                style = MaterialTheme.typography.labelSmall,
-                                modifier = Modifier.padding(vertical = 10.dp),
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
 
                 // Title Input
                 OutlinedTextField(
@@ -684,7 +693,41 @@ fun AiProposalDialog(
                     )
                 )
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Contact Section with "Select from Contacts" picker
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "CONTACT DETAILS",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    TextButton(
+                        onClick = {
+                            contactPickerLauncher.launch(ContactPickerHelper.createPickContactIntent())
+                        },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ContactPhone,
+                            contentDescription = "Pick Contact",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Select from Contacts",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
 
                 // Contact Info Inputs
                 Row(
@@ -713,12 +756,25 @@ fun AiProposalDialog(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                        )
+                        ),
+                        trailingIcon = {
+                            IconButton(
+                                onClick = {
+                                    contactPickerLauncher.launch(ContactPickerHelper.createPickContactIntent())
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ContactPhone,
+                                    contentDescription = "Select from Contacts",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
                     )
                 }
 
                 // Message Body (if SMS or WhatsApp)
-                if (actionType == ActionType.SMS || actionType == ActionType.WHATSAPP) {
+                if (proposal.actionType == ActionType.SMS || proposal.actionType == ActionType.WHATSAPP) {
                     Spacer(modifier = Modifier.height(10.dp))
                     OutlinedTextField(
                         value = messageBody,
@@ -781,7 +837,7 @@ fun AiProposalDialog(
                                 contactName = contactName.ifBlank { null },
                                 contactPhone = contactPhone.ifBlank { null },
                                 messageBody = messageBody.ifBlank { null },
-                                actionType = actionType
+                                actionType = proposal.actionType
                             )
                             onConfirm(updatedProposal)
                         },

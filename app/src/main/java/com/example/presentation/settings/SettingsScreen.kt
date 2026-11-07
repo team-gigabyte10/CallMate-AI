@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
@@ -307,13 +308,13 @@ fun SettingsScreen(
                     }
 
                     OutlinedButton(
-                        onClick = { viewModel.resetSampleData() },
+                        onClick = { viewModel.clearAllData() },
                         shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.weight(1f)
                     ) {
-                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Reset Data", style = MaterialTheme.typography.labelSmall)
+                        Text("Clear All Data", style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }
