@@ -3,7 +3,8 @@ package com.example.presentation.home
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.ai.TaskParser
+import com.example.ai.DefaultGeminiRepository
+import com.example.ai.GeminiRepository
 import com.example.ai.VoiceSpeechController
 import com.example.communication.ExecutionPolicy
 import com.example.data.local.CallMateDatabase
@@ -25,7 +26,10 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.UUID
 
-class HomeViewModel(application: Application) : AndroidViewModel(application) {
+class HomeViewModel(
+    application: Application,
+    private val geminiRepository: GeminiRepository = DefaultGeminiRepository()
+) : AndroidViewModel(application) {
 
     private val database = CallMateDatabase.getDatabase(application)
     val repository = CallMateRepository(database)
@@ -46,6 +50,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _isListening = MutableStateFlow(false)
     val isListening: StateFlow<Boolean> = _isListening.asStateFlow()
+
+    private val _isLoadingAi = MutableStateFlow(false)
+    val isLoadingAi: StateFlow<Boolean> = _isLoadingAi.asStateFlow()
 
     private val _aiProposal = MutableStateFlow<AiTaskProposal?>(null)
     val aiProposal: StateFlow<AiTaskProposal?> = _aiProposal.asStateFlow()
@@ -96,38 +103,45 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         if (text.isBlank()) return
 
         _commandInput.value = ""
+        _isLoadingAi.value = true
 
         viewModelScope.launch {
-            // Save user message to chat
-            val userMsg = ConversationEntity(
-                sender = "USER",
-                message = text
-            )
-            repository.insertConversation(userMsg)
+            try {
+                // Save user message to chat history
+                val userMsg = ConversationEntity(
+                    sender = "USER",
+                    message = text
+                )
+                repository.insertConversation(userMsg)
 
-            // Parse command using multilingual AI TaskParser
-            val contactsSnapshot = repository.getAllContactsSnapshot()
-            val proposal = TaskParser.parseCommand(text, contactsSnapshot)
+                // Parse command using Gemini AI Repository (with local TaskParser fallback)
+                val contactsSnapshot = repository.getAllContactsSnapshot()
+                val proposal = geminiRepository.parseCommand(text, contactsSnapshot)
 
-            val replyText = if (proposal.missingFields.isNotEmpty() && proposal.clarificationQuestion != null) {
-                proposal.clarificationQuestion
-            } else {
-                "I understood your request: ${proposal.title} at ${com.example.core.util.TimeUtils.formatDateTime(proposal.scheduledTimeMillis)}. Please review the proposed details below."
+                val replyText = if (proposal.missingFields.isNotEmpty() && proposal.clarificationQuestion != null) {
+                    proposal.clarificationQuestion
+                } else {
+                    "I understood your request: ${proposal.title} at ${com.example.core.util.TimeUtils.formatDateTime(proposal.scheduledTimeMillis)}. Please review the proposal below."
+                }
+
+                val aiMsg = ConversationEntity(
+                    sender = "AI",
+                    message = replyText,
+                    proposedTaskId = proposal.intent
+                )
+                repository.insertConversation(aiMsg)
+
+                if (preferencesRepository.voiceFeedback.value) {
+                    voiceController?.speak(replyText)
+                }
+
+                // Surface proposal for user confirmation
+                _aiProposal.value = proposal
+            } catch (e: Exception) {
+                _statusMessage.value = "AI parsing error: ${e.message}"
+            } finally {
+                _isLoadingAi.value = false
             }
-
-            val aiMsg = ConversationEntity(
-                sender = "AI",
-                message = replyText,
-                proposedTaskId = proposal.intent
-            )
-            repository.insertConversation(aiMsg)
-
-            if (preferencesRepository.voiceFeedback.value) {
-                voiceController?.speak(replyText)
-            }
-
-            // Surface proposal for user confirmation
-            _aiProposal.value = proposal
         }
     }
 
@@ -180,6 +194,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             )
             if (success) {
                 repository.updateTaskStatus(task.id, TaskStatus.COMPLETED)
+            } else {
+                _statusMessage.value = "Failed to launch action for ${task.title}"
             }
         }
     }
@@ -188,34 +204,52 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.updateTaskStatus(taskId, TaskStatus.COMPLETED)
             AlarmScheduler.cancelTask(getApplication(), taskId)
+            _statusMessage.value = "Task marked as completed"
         }
     }
 
     fun snoozeTask(taskId: String) {
         viewModelScope.launch {
-            repository.snoozeTask(taskId, 10)
+            val additionalMinutes = 10
+            val newTime = System.currentTimeMillis() + (additionalMinutes * 60 * 1000L)
+            repository.snoozeTask(taskId, additionalMinutes)
+            val task = repository.getTaskById(taskId)
+            task?.let {
+                AlarmScheduler.scheduleTask(
+                    context = getApplication(),
+                    taskId = it.id,
+                    title = it.title,
+                    actionType = it.actionType,
+                    phoneNumber = it.contactPhone,
+                    messageBody = it.messageBody,
+                    scheduledAt = newTime
+                )
+            }
+            _statusMessage.value = "Snoozed for 10 minutes"
         }
     }
 
     fun deleteTask(task: TaskEntity) {
         viewModelScope.launch {
+            AlarmScheduler.cancelTask(getApplication(), task.id)
             repository.deleteTask(task)
-            AlarmScheduler.cancelTask(getApplication(), taskId = task.id)
+            _statusMessage.value = "Task deleted"
         }
     }
 
-    fun createQuickTask(type: ActionType) {
-        val now = System.currentTimeMillis() + 3600000L
+    fun createQuickTask(actionType: ActionType) {
         val proposal = AiTaskProposal(
-            intent = "QUICK_TASK",
-            actionType = type,
-            title = when (type) {
-                ActionType.CALL -> "Quick Call"
-                ActionType.SMS -> "Quick SMS"
-                ActionType.WHATSAPP -> "Quick WhatsApp"
-                ActionType.REMINDER -> "Quick Reminder"
+            intent = "QUICK_CREATE_${actionType.name}",
+            actionType = actionType,
+            title = when (actionType) {
+                ActionType.CALL -> "Call Contact"
+                ActionType.SMS -> "Send SMS"
+                ActionType.WHATSAPP -> "WhatsApp Message"
+                ActionType.REMINDER -> "Personal Reminder"
             },
-            scheduledTimeMillis = now
+            executionMode = if (actionType == ActionType.REMINDER) ExecutionMode.REMINDER else ExecutionMode.ASSISTED,
+            scheduledTimeMillis = System.currentTimeMillis() + 3600000L,
+            requiresConfirmation = true
         )
         _aiProposal.value = proposal
     }

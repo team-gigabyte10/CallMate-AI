@@ -340,7 +340,7 @@ fun ContactsScreen(
                         Button(
                             onClick = {
                                 if (name.isNotBlank() && phone.isNotBlank()) {
-                                    viewModel.addContact(name, phone, nickname.ifBlank { null })
+                                    viewModel.saveContact(name, phone, nickname.ifBlank { null }, false)
                                     showAddDialog = false
                                 }
                             },
@@ -406,7 +406,7 @@ fun ContactsScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         Button(
                             onClick = {
-                                viewModel.updateContactNickname(contact, nickname)
+                                viewModel.updateNickname(contact, nickname)
                                 editingNicknameContact = null
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),

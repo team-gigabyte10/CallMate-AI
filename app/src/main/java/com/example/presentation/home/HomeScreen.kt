@@ -88,6 +88,7 @@ fun HomeScreen(
     val upcomingTasks by viewModel.upcomingTasks.collectAsStateWithLifecycle()
     val conversations by viewModel.conversations.collectAsStateWithLifecycle()
     val isListening by viewModel.isListening.collectAsStateWithLifecycle()
+    val isLoadingAi by viewModel.isLoadingAi.collectAsStateWithLifecycle()
     val aiProposal by viewModel.aiProposal.collectAsStateWithLifecycle()
     val commandInput by viewModel.commandInput.collectAsStateWithLifecycle()
     val statusMessage by viewModel.statusMessage.collectAsStateWithLifecycle()
@@ -142,6 +143,7 @@ fun HomeScreen(
             item {
                 AiAssistantPanel(
                     isListening = isListening,
+                    isLoadingAi = isLoadingAi,
                     conversations = conversations,
                     commandInput = commandInput,
                     showChatHistory = showChatHistory,
@@ -364,6 +366,7 @@ fun StatPill(label: String, value: String, color: Color) {
 @Composable
 fun AiAssistantPanel(
     isListening: Boolean,
+    isLoadingAi: Boolean,
     conversations: List<com.example.data.local.entities.ConversationEntity>,
     commandInput: String,
     showChatHistory: Boolean,
@@ -397,11 +400,21 @@ fun AiAssistantPanel(
                         modifier = Modifier
                             .size(10.dp)
                             .clip(CircleShape)
-                            .background(if (isListening) SuccessGreen else BrandSky)
+                            .background(
+                                when {
+                                    isListening -> SuccessGreen
+                                    isLoadingAi -> BrandIndigo
+                                    else -> BrandSky
+                                }
+                            )
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isListening) "Listening to voice..." else "Personal AI Assistant",
+                        text = when {
+                            isListening -> "Listening to voice..."
+                            isLoadingAi -> "Gemini is analyzing..."
+                            else -> "Personal AI Assistant"
+                        },
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
