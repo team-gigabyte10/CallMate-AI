@@ -6,6 +6,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,11 +27,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Send
-import androidx.compose.material.icons.outlined.Chat
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -62,12 +64,18 @@ import com.example.domain.model.ActionType
 import com.example.presentation.components.AiProposalDialog
 import com.example.presentation.components.TaskCard
 import com.example.presentation.components.VoiceMicButton
-import com.example.ui.theme.CallGreen
-import com.example.ui.theme.CyanAccent
-import com.example.ui.theme.IndigoPrimary
+import com.example.ui.theme.AiGradient
+import com.example.ui.theme.BrandIndigo
+import com.example.ui.theme.BrandSky
+import com.example.ui.theme.CallEmerald
+import com.example.ui.theme.CallEmeraldContainer
 import com.example.ui.theme.ReminderAmber
-import com.example.ui.theme.SmsBlue
-import com.example.ui.theme.WhatsAppGreen
+import com.example.ui.theme.ReminderAmberContainer
+import com.example.ui.theme.SmsSky
+import com.example.ui.theme.SmsSkyContainer
+import com.example.ui.theme.SuccessGreen
+import com.example.ui.theme.WhatsAppMint
+import com.example.ui.theme.WhatsAppMintContainer
 import java.util.Calendar
 
 @Composable
@@ -117,9 +125,9 @@ fun HomeScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            contentPadding = PaddingValues(top = 16.dp, bottom = 96.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 18.dp),
+            contentPadding = PaddingValues(top = 18.dp, bottom = 96.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             // Header: Greeting and stats
             item {
@@ -163,20 +171,26 @@ fun HomeScreen(
                 ) {
                     Text(
                         text = "Today's Tasks",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onBackground
                     )
-                    Text(
-                        text = "${todayTasks.count { it.status == com.example.domain.model.TaskStatus.COMPLETED }}/${todayTasks.size} Done",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        Text(
+                            text = "${todayTasks.count { it.status == com.example.domain.model.TaskStatus.COMPLETED }}/${todayTasks.size} Done",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                        )
+                    }
                 }
             }
 
             if (todayTasks.isEmpty()) {
                 item {
-                    EmptyStateCard(message = "No tasks scheduled for today. Ask CallMate to schedule a call or reminder!")
+                    EmptyStateCard(message = "No tasks due today. Speak or tap below to schedule a call or reminder!")
                 }
             } else {
                 items(todayTasks, key = { it.id }) { task ->
@@ -193,10 +207,10 @@ fun HomeScreen(
             // Upcoming Reminders
             if (upcomingTasks.isNotEmpty()) {
                 item {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "Upcoming Communication",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onBackground
                     )
                 }
@@ -233,8 +247,14 @@ fun GreetingHeader(
     upcomingCount: Int
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant,
+                shape = RoundedCornerShape(24.dp)
+            ),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
@@ -246,12 +266,12 @@ fun GreetingHeader(
                 .background(
                     Brush.horizontalGradient(
                         listOf(
-                            IndigoPrimary.copy(alpha = 0.12f),
-                            CyanAccent.copy(alpha = 0.08f)
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.04f)
                         )
                     )
                 )
-                .padding(20.dp)
+                .padding(22.dp)
         ) {
             Column {
                 Row(
@@ -262,33 +282,34 @@ fun GreetingHeader(
                     Column {
                         Text(
                             text = "$greeting 👋",
-                            style = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "CallMate AI",
-                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                            style = MaterialTheme.typography.headlineLarge,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     }
 
                     Box(
                         modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(IndigoPrimary.copy(alpha = 0.15f)),
+                            .size(46.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(AiGradient),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.AutoAwesome,
                             contentDescription = "AI Active",
-                            tint = IndigoPrimary,
+                            tint = Color.White,
                             modifier = Modifier.size(24.dp)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -297,17 +318,17 @@ fun GreetingHeader(
                     StatPill(
                         label = "Due Today",
                         value = "$todayCount",
-                        color = if (todayCount > 0) CyanAccent else IndigoPrimary
+                        color = if (todayCount > 0) BrandSky else MaterialTheme.colorScheme.primary
                     )
                     StatPill(
                         label = "Scheduled",
                         value = "$upcomingCount",
-                        color = IndigoPrimary
+                        color = MaterialTheme.colorScheme.primary
                     )
                     StatPill(
                         label = "Languages",
-                        value = "EN / BN",
-                        color = CallGreen
+                        value = "EN • BN",
+                        color = CallEmerald
                     )
                 }
             }
@@ -323,18 +344,17 @@ fun StatPill(label: String, value: String, color: Color) {
         modifier = Modifier.padding(vertical = 2.dp)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = "$value ",
-                fontWeight = FontWeight.Bold,
-                fontSize = 13.sp,
+                style = MaterialTheme.typography.labelLarge,
                 color = color
             )
             Text(
                 text = label,
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -354,12 +374,18 @@ fun AiAssistantPanel(
     onQuickPrompt: (String) -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                shape = RoundedCornerShape(24.dp)
+            ),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
     ) {
-        Column(modifier = Modifier.padding(18.dp)) {
+        Column(modifier = Modifier.padding(20.dp)) {
             // Header with AI Status
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -371,31 +397,31 @@ fun AiAssistantPanel(
                         modifier = Modifier
                             .size(10.dp)
                             .clip(CircleShape)
-                            .background(if (isListening) CallGreen else CyanAccent)
+                            .background(if (isListening) SuccessGreen else BrandSky)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = if (isListening) "Listening to voice..." else "Personal AI Assistant",
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
                 Surface(
-                    shape = RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(10.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant,
                     modifier = Modifier.clickable(onClick = onToggleChatHistory)
                 ) {
                     Text(
                         text = if (showChatHistory) "Hide History" else "History (${conversations.size})",
                         style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        color = IndigoPrimary
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Expandable Conversation History
             AnimatedVisibility(visible = showChatHistory) {
@@ -412,15 +438,15 @@ fun AiAssistantPanel(
                             horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
                         ) {
                             Surface(
-                                shape = RoundedCornerShape(14.dp),
-                                color = if (isUser) IndigoPrimary else MaterialTheme.colorScheme.surfaceVariant,
+                                shape = RoundedCornerShape(16.dp),
+                                color = if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                                 modifier = Modifier.widthIn(max = 280.dp)
                             ) {
                                 Text(
                                     text = chat.message,
                                     color = if (isUser) Color.White else MaterialTheme.colorScheme.onSurface,
-                                    fontSize = 13.sp,
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
                                 )
                             }
                         }
@@ -432,19 +458,19 @@ fun AiAssistantPanel(
             if (!showChatHistory && conversations.isNotEmpty()) {
                 val lastMsg = conversations.last()
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
                         text = "${if (lastMsg.sender == "USER") "You" else "CallMate"}: ${lastMsg.message}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(10.dp),
+                        modifier = Modifier.padding(12.dp),
                         maxLines = 2
                     )
                 }
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
             }
 
             // Voice Mic and Text Input Row
@@ -465,16 +491,17 @@ fun AiAssistantPanel(
                     placeholder = {
                         Text(
                             text = if (isListening) "Speak now..." else "E.g. Call Rahim tomorrow 2 PM",
-                            fontSize = 13.sp
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         )
                     },
                     modifier = Modifier
                         .weight(1f)
                         .testTag("ai_command_input"),
-                    shape = RoundedCornerShape(24.dp),
+                    shape = RoundedCornerShape(18.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = IndigoPrimary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
                     ),
                     singleLine = true,
                     trailingIcon = {
@@ -484,9 +511,9 @@ fun AiAssistantPanel(
                                 modifier = Modifier.testTag("send_command_button")
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Send,
+                                    imageVector = Icons.AutoMirrored.Filled.Send,
                                     contentDescription = "Send Command",
-                                    tint = IndigoPrimary
+                                    tint = MaterialTheme.colorScheme.primary
                                 )
                             }
                         }
@@ -494,16 +521,16 @@ fun AiAssistantPanel(
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Quick Prompt Chips
             Text(
-                text = "Try saying or tapping:",
+                text = "SUGGESTED COMMANDS",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -518,15 +545,16 @@ fun AiAssistantPanel(
                 )
                 items(prompts) { prompt ->
                     Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                        shape = RoundedCornerShape(14.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                         modifier = Modifier.clickable { onQuickPrompt(prompt) }
                     ) {
                         Text(
                             text = prompt,
-                            fontSize = 11.sp,
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
                         )
                     }
                 }
@@ -544,23 +572,26 @@ fun QuickActionSection(
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         QuickActionButton(
-            label = "Schedule Call",
+            label = "Call",
             icon = Icons.Default.Call,
-            color = CallGreen,
+            color = CallEmerald,
+            containerColor = CallEmeraldContainer,
             onClick = { onActionClick(ActionType.CALL) },
             modifier = Modifier.weight(1f)
         )
         QuickActionButton(
-            label = "Draft SMS",
-            icon = Icons.Default.Send,
-            color = SmsBlue,
+            label = "SMS",
+            icon = Icons.AutoMirrored.Filled.Send,
+            color = SmsSky,
+            containerColor = SmsSkyContainer,
             onClick = { onActionClick(ActionType.SMS) },
             modifier = Modifier.weight(1f)
         )
         QuickActionButton(
             label = "WhatsApp",
-            icon = Icons.Outlined.Chat,
-            color = WhatsAppGreen,
+            icon = Icons.AutoMirrored.Outlined.Chat,
+            color = WhatsAppMint,
+            containerColor = WhatsAppMintContainer,
             onClick = { onActionClick(ActionType.WHATSAPP) },
             modifier = Modifier.weight(1f)
         )
@@ -568,6 +599,7 @@ fun QuickActionSection(
             label = "Reminder",
             icon = Icons.Default.Notifications,
             color = ReminderAmber,
+            containerColor = ReminderAmberContainer,
             onClick = { onActionClick(ActionType.REMINDER) },
             modifier = Modifier.weight(1f)
         )
@@ -579,15 +611,17 @@ fun QuickActionButton(
     label: String,
     icon: ImageVector,
     color: Color,
+    containerColor: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
         modifier = modifier
-            .height(72.dp)
+            .height(78.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        color = color.copy(alpha = 0.12f)
+        shape = RoundedCornerShape(18.dp),
+        color = containerColor,
+        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.2f))
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -600,10 +634,10 @@ fun QuickActionButton(
                 tint = color,
                 modifier = Modifier.size(24.dp)
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = label,
-                fontSize = 11.sp,
+                style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = color
             )
@@ -614,16 +648,34 @@ fun QuickActionButton(
 @Composable
 fun EmptyStateCard(message: String) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp)),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
     ) {
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp),
-            contentAlignment = Alignment.Center
+                .padding(28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Schedule,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(26.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodyMedium,

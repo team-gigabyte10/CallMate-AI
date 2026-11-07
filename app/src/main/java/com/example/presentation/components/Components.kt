@@ -12,6 +12,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,21 +23,20 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Snooze
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
-import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -48,6 +48,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -65,6 +66,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -74,16 +76,19 @@ import com.example.data.local.entities.ContactEntity
 import com.example.data.local.entities.TaskEntity
 import com.example.domain.model.ActionType
 import com.example.domain.model.AiTaskProposal
-import com.example.domain.model.ExecutionMode
 import com.example.domain.model.TaskStatus
-import com.example.ui.theme.CallGreen
-import com.example.ui.theme.CyanAccent
-import com.example.ui.theme.EmeraldSuccess
-import com.example.ui.theme.IndigoPrimary
+import com.example.ui.theme.AiGradient
+import com.example.ui.theme.BrandIndigo
+import com.example.ui.theme.CallEmerald
+import com.example.ui.theme.CallEmeraldContainer
+import com.example.ui.theme.ErrorRose
 import com.example.ui.theme.ReminderAmber
-import com.example.ui.theme.RoseError
-import com.example.ui.theme.SmsBlue
-import com.example.ui.theme.WhatsAppGreen
+import com.example.ui.theme.ReminderAmberContainer
+import com.example.ui.theme.SmsSky
+import com.example.ui.theme.SmsSkyContainer
+import com.example.ui.theme.SuccessGreen
+import com.example.ui.theme.WhatsAppMint
+import com.example.ui.theme.WhatsAppMintContainer
 
 @Composable
 fun TaskCard(
@@ -96,34 +101,40 @@ fun TaskCard(
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
-    val (actionColor, actionIcon) = when (task.actionType) {
-        ActionType.CALL -> Pair(CallGreen, Icons.Default.Call)
-        ActionType.SMS -> Pair(SmsBlue, Icons.Default.Send)
-        ActionType.WHATSAPP -> Pair(WhatsAppGreen, Icons.Outlined.Chat)
-        ActionType.REMINDER -> Pair(ReminderAmber, Icons.Default.Notifications)
+    val (actionColor, actionContainer, actionIcon) = when (task.actionType) {
+        ActionType.CALL -> Triple(CallEmerald, CallEmeraldContainer, Icons.Default.Call)
+        ActionType.SMS -> Triple(SmsSky, SmsSkyContainer, Icons.AutoMirrored.Filled.Send)
+        ActionType.WHATSAPP -> Triple(WhatsAppMint, WhatsAppMintContainer, Icons.AutoMirrored.Outlined.Chat)
+        ActionType.REMINDER -> Triple(ReminderAmber, ReminderAmberContainer, Icons.Default.Notifications)
     }
 
     Card(
         modifier = modifier
             .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = actionColor.copy(alpha = 0.22f),
+                shape = RoundedCornerShape(20.dp)
+            )
             .testTag("task_card_${task.id}"),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(18.dp)) {
             // Header Row: Action badge, title, status, menu
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Action Icon in a modern rounded squircle
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(actionColor.copy(alpha = 0.15f)),
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(actionContainer),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -134,22 +145,24 @@ fun TaskCard(
                     )
                 }
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(14.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = task.title,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     if (!task.contactName.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "${task.contactName} ${task.contactPhone?.let { "($it)" } ?: ""}",
+                            text = "${task.contactName} ${task.contactPhone?.let { "• $it" } ?: ""}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -172,7 +185,7 @@ fun TaskCard(
                         onDismissRequest = { showMenu = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Snooze (10 mins)") },
+                            text = { Text("Snooze 10 mins") },
                             leadingIcon = { Icon(Icons.Default.Snooze, contentDescription = null) },
                             onClick = {
                                 showMenu = false
@@ -180,8 +193,8 @@ fun TaskCard(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Delete") },
-                            leadingIcon = { Icon(Icons.Default.Delete, tint = RoseError, contentDescription = null) },
+                            text = { Text("Delete", color = ErrorRose) },
+                            leadingIcon = { Icon(Icons.Default.Delete, tint = ErrorRose, contentDescription = null) },
                             onClick = {
                                 showMenu = false
                                 onDelete()
@@ -191,26 +204,39 @@ fun TaskCard(
                 }
             }
 
-            // Message preview if available
+            // Message preview card if available
             if (!task.messageBody.isNullOrBlank() && task.actionType != ActionType.REMINDER) {
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = "\"${task.messageBody}\"",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.Chat,
+                            contentDescription = null,
+                            tint = actionColor,
+                            modifier = Modifier
+                                .size(16.dp)
+                                .padding(top = 2.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "\"${task.messageBody}\"",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Footer Row: Scheduled Time and Action Buttons
             Row(
@@ -218,19 +244,27 @@ fun TaskCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.AccessTime,
-                        contentDescription = "Time",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = TimeUtils.formatDateTime(task.scheduledAt),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AccessTime,
+                            contentDescription = "Time",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = TimeUtils.formatDateTime(task.scheduledAt),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -238,36 +272,41 @@ fun TaskCard(
                         OutlinedButton(
                             onClick = onComplete,
                             modifier = Modifier
-                                .height(36.dp)
+                                .height(38.dp)
                                 .testTag("complete_task_${task.id}"),
-                            shape = RoundedCornerShape(18.dp),
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Check,
                                 contentDescription = "Complete",
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(16.dp),
+                                tint = SuccessGreen
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Done", fontSize = 12.sp)
+                            Text("Done", style = MaterialTheme.typography.labelMedium)
                         }
 
                         Button(
                             onClick = onPrimaryAction,
                             colors = ButtonDefaults.buttonColors(containerColor = actionColor),
                             modifier = Modifier
-                                .height(36.dp)
+                                .height(38.dp)
                                 .testTag("action_task_${task.id}"),
-                            shape = RoundedCornerShape(18.dp),
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 16.dp)
                         ) {
                             val actionLabel = when (task.actionType) {
-                                ActionType.CALL -> "Call Now"
-                                ActionType.SMS -> "Send SMS"
+                                ActionType.CALL -> "Call"
+                                ActionType.SMS -> "Send"
                                 ActionType.WHATSAPP -> "WhatsApp"
                                 ActionType.REMINDER -> "View"
                             }
-                            Text(actionLabel, fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.Medium)
+                            Text(
+                                text = actionLabel,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = Color.White
+                            )
                         }
                     }
                 }
@@ -279,28 +318,36 @@ fun TaskCard(
 @Composable
 fun StatusChip(status: TaskStatus) {
     val (chipColor, chipBg, label) = when (status) {
-        TaskStatus.SCHEDULED -> Triple(IndigoPrimary, IndigoPrimary.copy(alpha = 0.12f), "Scheduled")
-        TaskStatus.DUE -> Triple(RoseError, RoseError.copy(alpha = 0.15f), "Due Now")
-        TaskStatus.COMPLETED -> Triple(EmeraldSuccess, EmeraldSuccess.copy(alpha = 0.12f), "Completed")
+        TaskStatus.SCHEDULED -> Triple(BrandIndigo, BrandIndigo.copy(alpha = 0.12f), "Scheduled")
+        TaskStatus.DUE -> Triple(ErrorRose, ErrorRose.copy(alpha = 0.15f), "Due Now")
+        TaskStatus.COMPLETED -> Triple(SuccessGreen, SuccessGreen.copy(alpha = 0.12f), "Done")
         TaskStatus.SNOOZED -> Triple(ReminderAmber, ReminderAmber.copy(alpha = 0.15f), "Snoozed")
-        TaskStatus.MISSED -> Triple(RoseError, RoseError.copy(alpha = 0.12f), "Missed")
+        TaskStatus.MISSED -> Triple(ErrorRose, ErrorRose.copy(alpha = 0.12f), "Missed")
         TaskStatus.CANCELLED -> Triple(Color.Gray, Color.Gray.copy(alpha = 0.12f), "Cancelled")
-        TaskStatus.DRAFT -> Triple(CyanAccent, CyanAccent.copy(alpha = 0.12f), "Draft")
-        TaskStatus.FAILED -> Triple(RoseError, RoseError.copy(alpha = 0.12f), "Failed")
+        TaskStatus.DRAFT -> Triple(SmsSky, SmsSky.copy(alpha = 0.12f), "Draft")
+        TaskStatus.FAILED -> Triple(ErrorRose, ErrorRose.copy(alpha = 0.12f), "Failed")
     }
 
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(50))
             .background(chipBg)
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .padding(horizontal = 10.dp, vertical = 5.dp)
     ) {
-        Text(
-            text = label,
-            color = chipColor,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(chipColor)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = label,
+                color = chipColor,
+                style = MaterialTheme.typography.labelSmall
+            )
+        }
     }
 }
 
@@ -311,19 +358,28 @@ fun VoiceMicButton(
     modifier: Modifier = Modifier
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val pulseScale by infiniteTransition.animateFloat(
+    val pulseScale1 by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = if (isListening) 1.25f else 1f,
+        targetValue = if (isListening) 1.35f else 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = FastOutSlowInEasing),
+            animation = tween(900, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "pulse_scale"
+        label = "pulse_scale1"
+    )
+    val pulseScale2 by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = if (isListening) 1.2f else 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(600, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse_scale2"
     )
 
     Box(
         modifier = modifier
-            .size(72.dp)
+            .size(76.dp)
             .clickable(onClick = onClick)
             .testTag("voice_mic_button"),
         contentAlignment = Alignment.Center
@@ -331,18 +387,17 @@ fun VoiceMicButton(
         if (isListening) {
             Box(
                 modifier = Modifier
-                    .size(72.dp)
-                    .scale(pulseScale)
+                    .size(76.dp)
+                    .scale(pulseScale1)
                     .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(
-                                CyanAccent.copy(alpha = 0.4f),
-                                IndigoPrimary.copy(alpha = 0.1f),
-                                Color.Transparent
-                            )
-                        )
-                    )
+                    .background(BrandIndigo.copy(alpha = 0.2f))
+            )
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .scale(pulseScale2)
+                    .clip(CircleShape)
+                    .background(ErrorRose.copy(alpha = 0.25f))
             )
         }
 
@@ -351,8 +406,8 @@ fun VoiceMicButton(
                 .size(56.dp)
                 .clip(CircleShape)
                 .background(
-                    if (isListening) Brush.linearGradient(listOf(RoseError, IndigoPrimary))
-                    else Brush.linearGradient(listOf(IndigoPrimary, CyanAccent))
+                    if (isListening) Brush.linearGradient(listOf(ErrorRose, Color(0xFFE11D48)))
+                    else AiGradient
                 ),
             contentAlignment = Alignment.Center
         ) {
@@ -378,23 +433,35 @@ fun ContactCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant,
+                shape = RoundedCornerShape(20.dp)
+            )
             .testTag("contact_card_${contact.id}"),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Contact Avatar with Initials
             Box(
                 modifier = Modifier
-                    .size(46.dp)
+                    .size(48.dp)
                     .clip(CircleShape)
-                    .background(Color(contact.avatarColor)),
+                    .background(
+                        Brush.linearGradient(
+                            listOf(
+                                Color(contact.avatarColor),
+                                Color(contact.avatarColor).copy(alpha = 0.75f)
+                            )
+                        )
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 val initials = contact.name.split(" ")
@@ -404,18 +471,17 @@ fun ContactCard(
                 Text(
                     text = if (initials.isNotEmpty()) initials else "C",
                     color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                 )
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(14.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = contact.name,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -431,6 +497,8 @@ fun ContactCard(
                     }
                 }
 
+                Spacer(modifier = Modifier.height(2.dp))
+
                 Text(
                     text = contact.phoneNumber,
                     style = MaterialTheme.typography.bodySmall,
@@ -439,18 +507,17 @@ fun ContactCard(
 
                 // Nickname chip for AI voice triggers
                 if (!contact.nickname.isNullOrBlank()) {
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = IndigoPrimary.copy(alpha = 0.1f),
+                        color = MaterialTheme.colorScheme.primaryContainer,
                         modifier = Modifier.clickable(onClick = onEditNickname)
                     ) {
                         Text(
-                            text = "AI Nickname: \"${contact.nickname}\"",
-                            color = IndigoPrimary,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            text = "AI Voice Nickname: \"${contact.nickname}\"",
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                         )
                     }
                 }
@@ -461,22 +528,40 @@ fun ContactCard(
                 onClick = onCallClick,
                 modifier = Modifier.testTag("contact_call_${contact.id}")
             ) {
-                Icon(
-                    imageVector = Icons.Default.Call,
-                    contentDescription = "Call ${contact.name}",
-                    tint = CallGreen
-                )
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(CallEmeraldContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Call,
+                        contentDescription = "Call ${contact.name}",
+                        tint = CallEmerald,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
 
             IconButton(
                 onClick = onMessageClick,
                 modifier = Modifier.testTag("contact_msg_${contact.id}")
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.Chat,
-                    contentDescription = "Message ${contact.name}",
-                    tint = CyanAccent
-                )
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(SmsSkyContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.Chat,
+                        contentDescription = "Message ${contact.name}",
+                        tint = SmsSky,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
 
             IconButton(
@@ -507,14 +592,14 @@ fun AiProposalDialog(
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp,
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
                 modifier = Modifier
-                    .padding(20.dp)
+                    .padding(22.dp)
                     .fillMaxWidth()
             ) {
                 Row(
@@ -525,22 +610,22 @@ fun AiProposalDialog(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(IndigoPrimary.copy(alpha = 0.15f)),
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(AiGradient),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Schedule,
                                 contentDescription = null,
-                                tint = IndigoPrimary,
+                                tint = Color.White,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
-                        Spacer(modifier = Modifier.width(10.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "Confirm AI Proposal",
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                            text = "AI Task Proposal",
+                            style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -550,15 +635,15 @@ fun AiProposalDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Action Type Selector Chips
                 Text(
-                    text = "Action Type",
-                    style = MaterialTheme.typography.labelMedium,
+                    text = "ACTION TYPE",
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -567,7 +652,7 @@ fun AiProposalDialog(
                         val isSelected = actionType == type
                         Surface(
                             shape = RoundedCornerShape(12.dp),
-                            color = if (isSelected) IndigoPrimary else MaterialTheme.colorScheme.surfaceVariant,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                             modifier = Modifier
                                 .weight(1f)
                                 .clickable { actionType = type }
@@ -575,16 +660,15 @@ fun AiProposalDialog(
                             Text(
                                 text = type.name,
                                 color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.padding(vertical = 8.dp),
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.padding(vertical = 10.dp),
+                                textAlign = TextAlign.Center
                             )
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 // Title Input
                 OutlinedTextField(
@@ -593,10 +677,14 @@ fun AiProposalDialog(
                     label = { Text("Task Title") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(14.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                    )
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 // Contact Info Inputs
                 Row(
@@ -609,7 +697,11 @@ fun AiProposalDialog(
                         label = { Text("Contact Name") },
                         singleLine = true,
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                        )
                     )
                     OutlinedTextField(
                         value = contactPhone,
@@ -617,61 +709,71 @@ fun AiProposalDialog(
                         label = { Text("Phone Number") },
                         singleLine = true,
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                        )
                     )
                 }
 
                 // Message Body (if SMS or WhatsApp)
                 if (actionType == ActionType.SMS || actionType == ActionType.WHATSAPP) {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
                     OutlinedTextField(
                         value = messageBody,
                         onValueChange = { messageBody = it },
                         label = { Text("Message Body") },
                         maxLines = 3,
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                        )
                     )
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 // Scheduled Time display
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
-                        modifier = Modifier.padding(12.dp),
+                        modifier = Modifier.padding(14.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             imageVector = Icons.Default.AccessTime,
                             contentDescription = null,
-                            tint = IndigoPrimary,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(18.dp)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
                         Text(
                             text = "Due: ${TimeUtils.formatDateTime(proposal.scheduledTimeMillis)}",
                             style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(18.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
                 // Action Buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("Cancel")
+                        Text("Cancel", style = MaterialTheme.typography.labelLarge)
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
                     Button(
                         onClick = {
                             val updatedProposal = proposal.copy(
@@ -683,11 +785,11 @@ fun AiProposalDialog(
                             )
                             onConfirm(updatedProposal)
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = IndigoPrimary),
-                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.testTag("confirm_proposal_button")
                     ) {
-                        Text("Confirm & Schedule")
+                        Text("Confirm & Schedule", style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }

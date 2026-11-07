@@ -1,6 +1,8 @@
 package com.example.presentation.navigation
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Contacts
@@ -28,7 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.presentation.calendar.CalendarScreen
 import com.example.presentation.calendar.CalendarViewModel
@@ -40,7 +42,6 @@ import com.example.presentation.schedule.ScheduleScreen
 import com.example.presentation.schedule.ScheduleViewModel
 import com.example.presentation.settings.SettingsScreen
 import com.example.presentation.settings.SettingsViewModel
-import com.example.ui.theme.IndigoPrimary
 
 enum class AppDestination(
     val route: String,
@@ -72,7 +73,12 @@ fun MainAppContainer(
         bottomBar = {
             NavigationBar(
                 containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = IndigoPrimary
+                contentColor = MaterialTheme.colorScheme.primary,
+                tonalElevation = 8.dp,
+                modifier = Modifier.border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
             ) {
                 AppDestination.values().forEach { destination ->
                     val isSelected = currentDestination == destination
@@ -88,14 +94,14 @@ fun MainAppContainer(
                         label = {
                             Text(
                                 text = destination.title,
-                                fontSize = 11.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                             )
                         },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = IndigoPrimary,
-                            selectedTextColor = IndigoPrimary,
-                            indicatorColor = IndigoPrimary.copy(alpha = 0.15f),
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
                             unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                         ),

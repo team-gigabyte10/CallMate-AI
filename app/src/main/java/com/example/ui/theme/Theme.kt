@@ -12,53 +12,73 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = IndigoLight,
-    onPrimary = Color(0xFF0F172A),
-    primaryContainer = IndigoDark,
+    primary = BrandIndigo,
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFF282566),
     onPrimaryContainer = Color(0xFFE0E7FF),
-    secondary = CyanLight,
+    
+    secondary = BrandCyan,
     onSecondary = Color(0xFF0F172A),
     secondaryContainer = Color(0xFF164E63),
     onSecondaryContainer = Color(0xFFCFFAFE),
-    tertiary = EmeraldLight,
-    onTertiary = Color(0xFF064E3B),
-    background = DarkBg,
+    
+    tertiary = BrandSky,
+    onTertiary = Color.White,
+    tertiaryContainer = Color(0xFF0C4A6E),
+    onTertiaryContainer = Color(0xFFBAE6FD),
+    
+    background = DarkBackground,
     onBackground = DarkTextPrimary,
+    
     surface = DarkSurface,
     onSurface = DarkTextPrimary,
-    surfaceVariant = DarkSurfaceVariant,
+    
+    surfaceVariant = DarkSurfaceSubtle,
     onSurfaceVariant = DarkTextSecondary,
-    outline = Color(0xFF4B5563),
-    error = RoseError,
+    
+    outline = DarkBorder,
+    outlineVariant = DarkBorderSubtle,
+    
+    error = ErrorRose,
     onError = Color.White
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = IndigoPrimary,
+    primary = BrandIndigo,
     onPrimary = Color.White,
     primaryContainer = Color(0xFFEEF2FF),
-    onPrimaryContainer = IndigoDark,
-    secondary = CyanAccent,
+    onPrimaryContainer = Color(0xFF3730A3),
+    
+    secondary = BrandSky,
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFECFEFF),
-    onSecondaryContainer = Color(0xFF155E75),
-    tertiary = EmeraldSuccess,
+    secondaryContainer = Color(0xFFE0F2FE),
+    onSecondaryContainer = Color(0xFF0369A1),
+    
+    tertiary = BrandCyan,
     onTertiary = Color.White,
-    background = LightBg,
+    tertiaryContainer = Color(0xFFECFEFF),
+    onTertiaryContainer = Color(0xFF0E7490),
+    
+    background = LightBackground,
     onBackground = LightTextPrimary,
+    
     surface = LightSurface,
     onSurface = LightTextPrimary,
-    surfaceVariant = LightSurfaceVariant,
+    
+    surfaceVariant = LightSurfaceElevated,
     onSurfaceVariant = LightTextSecondary,
-    outline = Color(0xFFCBD5E1),
-    error = RoseError,
+    
+    outline = LightBorder,
+    outlineVariant = LightBorderSubtle,
+    
+    error = ErrorRose,
     onError = Color.White
 )
 
 @Composable
 fun CallMateTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = false, // Use our handcrafted rich theme by default
+    dynamicColor: Boolean = false, // Keep handcrafted premium palette by default
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

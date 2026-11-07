@@ -1,6 +1,7 @@
 package com.example.presentation.calendar
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,7 +25,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AssignmentTurnedIn
 import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -44,9 +44,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.core.util.TimeUtils
 import com.example.presentation.components.TaskCard
-import com.example.ui.theme.CyanAccent
-import com.example.ui.theme.EmeraldSuccess
-import com.example.ui.theme.IndigoPrimary
+import com.example.ui.theme.AiGradient
+import com.example.ui.theme.BrandSky
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -66,7 +65,7 @@ fun CalendarScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = 18.dp, vertical = 14.dp)
     ) {
         // Screen Header
         Row(
@@ -77,56 +76,58 @@ fun CalendarScreen(
             Column {
                 Text(
                     text = "Calendar & Agenda",
-                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.headlineLarge,
                     color = MaterialTheme.colorScheme.onBackground
                 )
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = TimeUtils.formatDateOnly(selectedDate.timeInMillis),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = IndigoPrimary,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold
                 )
             }
 
             // View Mode Toggle (Day / Week)
             Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
                 Row(modifier = Modifier.padding(4.dp)) {
                     val isDay = viewMode == CalendarViewMode.DAY
                     Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = if (isDay) IndigoPrimary else Color.Transparent,
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (isDay) MaterialTheme.colorScheme.primary else Color.Transparent,
                         modifier = Modifier.clickable { viewModel.setViewMode(CalendarViewMode.DAY) }
                     ) {
                         Text(
                             text = "Day",
                             color = if (isDay) Color.White else MaterialTheme.colorScheme.onSurface,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = if (isDay) FontWeight.Bold else FontWeight.Medium,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                         )
                     }
 
                     Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = if (!isDay) IndigoPrimary else Color.Transparent,
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (!isDay) MaterialTheme.colorScheme.primary else Color.Transparent,
                         modifier = Modifier.clickable { viewModel.setViewMode(CalendarViewMode.WEEK) }
                     ) {
                         Text(
                             text = "Week",
                             color = if (!isDay) Color.White else MaterialTheme.colorScheme.onSurface,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = if (!isDay) FontWeight.Bold else FontWeight.Medium,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                         )
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Navigation Arrows and Weekday Strip
         Row(
@@ -135,7 +136,7 @@ fun CalendarScreen(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             IconButton(onClick = { viewModel.changeDay(-1) }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Previous Day")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Previous Day", tint = MaterialTheme.colorScheme.primary)
             }
 
             // Horizontal Weekday Strip
@@ -163,21 +164,23 @@ fun CalendarScreen(
                     Column(
                         modifier = Modifier
                             .clip(RoundedCornerShape(14.dp))
-                            .background(if (isSelected) IndigoPrimary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                            .background(
+                                if (isSelected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.surfaceVariant
+                            )
                             .clickable { viewModel.setSelectedDate(dayCal) }
-                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
                             text = dayNameFormat.format(dayCal.time),
-                            fontSize = 11.sp,
+                            style = MaterialTheme.typography.labelSmall,
                             color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = dayNumFormat.format(dayCal.time),
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -185,11 +188,11 @@ fun CalendarScreen(
             }
 
             IconButton(onClick = { viewModel.changeDay(1) }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Next Day")
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Next Day", tint = MaterialTheme.colorScheme.primary)
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(18.dp))
 
         // Agenda Timeline List
         LazyColumn(
@@ -200,28 +203,38 @@ fun CalendarScreen(
             // Meeting Follow-ups & Promises Section
             item {
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp)),
+                    shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
+                    Column(modifier = Modifier.padding(18.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.AssignmentTurnedIn,
-                                contentDescription = null,
-                                tint = CyanAccent,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primaryContainer),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AssignmentTurnedIn,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
                             Text(
-                                text = "Meeting Follow-ups & Promises",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                text = "Meeting Follow-ups & Commitments",
+                                style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         }
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "CallMate tracks commitments made during conversations and ensures timely reminders before meetings.",
+                            text = "CallMate detects verbal commitments from voice interactions and schedules timely reminders before meeting milestones.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -241,10 +254,10 @@ fun CalendarScreen(
                             Icon(
                                 imageVector = Icons.Default.CalendarToday,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                 modifier = Modifier.size(48.dp)
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(10.dp))
                             Text(
                                 text = "No scheduled agenda for this day",
                                 style = MaterialTheme.typography.titleMedium,

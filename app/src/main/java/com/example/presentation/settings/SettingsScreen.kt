@@ -2,6 +2,7 @@ package com.example.presentation.settings
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,11 +25,11 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -52,14 +53,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.ui.theme.CyanAccent
-import com.example.ui.theme.EmeraldSuccess
-import com.example.ui.theme.IndigoPrimary
-import com.example.ui.theme.RoseError
+import com.example.ui.theme.AiGradient
+import com.example.ui.theme.BrandSky
+import com.example.ui.theme.ErrorRose
+import com.example.ui.theme.SuccessGreen
 
 @Composable
 fun SettingsScreen(
@@ -87,15 +89,15 @@ fun SettingsScreen(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        contentPadding = PaddingValues(top = 16.dp, bottom = 120.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(horizontal = 18.dp),
+        contentPadding = PaddingValues(top = 18.dp, bottom = 120.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
         // Header
         item {
             Text(
-                text = "Settings & Preferences",
-                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                text = "Settings & AI Rules",
+                style = MaterialTheme.typography.headlineLarge,
                 color = MaterialTheme.colorScheme.onBackground
             )
             Spacer(modifier = Modifier.height(4.dp))
@@ -111,35 +113,32 @@ fun SettingsScreen(
             SettingsCard(
                 title = "Language & Multilingual AI",
                 icon = Icons.Default.Language,
-                iconColor = IndigoPrimary
+                iconColor = MaterialTheme.colorScheme.primary
             ) {
                 Text(
                     text = "CallMate understands English, বাংলা, and Banglish natural language commands seamlessly.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     LanguageOption(
                         label = "English",
-                        code = "EN",
                         isSelected = language == "EN",
                         onClick = { viewModel.setLanguage("EN") },
                         modifier = Modifier.weight(1f)
                     )
                     LanguageOption(
-                        label = "বাংলা (Bengali)",
-                        code = "BN",
+                        label = "বাংলা",
                         isSelected = language == "BN",
                         onClick = { viewModel.setLanguage("BN") },
                         modifier = Modifier.weight(1f)
                     )
                     LanguageOption(
                         label = "Banglish",
-                        code = "BANGLISH",
                         isSelected = language == "BANGLISH",
                         onClick = { viewModel.setLanguage("BANGLISH") },
                         modifier = Modifier.weight(1f)
@@ -153,7 +152,7 @@ fun SettingsScreen(
             SettingsCard(
                 title = "Appearance & Theme",
                 icon = Icons.Default.DarkMode,
-                iconColor = CyanAccent
+                iconColor = BrandSky
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -186,11 +185,11 @@ fun SettingsScreen(
             SettingsCard(
                 title = "AI Engine Configuration",
                 icon = Icons.Default.AutoAwesome,
-                iconColor = IndigoPrimary
+                iconColor = MaterialTheme.colorScheme.primary
             ) {
                 Text(
                     text = "Selected Model: $aiModel",
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                    style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(6.dp))
@@ -199,7 +198,7 @@ fun SettingsScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -225,7 +224,7 @@ fun SettingsScreen(
             SettingsCard(
                 title = "Voice & Speech Feedback",
                 icon = Icons.Default.RecordVoiceOver,
-                iconColor = EmeraldSuccess
+                iconColor = SuccessGreen
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -238,6 +237,7 @@ fun SettingsScreen(
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "Text-to-speech speaks back confirmation when voice commands are parsed.",
                             style = MaterialTheme.typography.bodySmall,
@@ -247,7 +247,10 @@ fun SettingsScreen(
                     Switch(
                         checked = voiceFeedback,
                         onCheckedChange = { viewModel.setVoiceFeedback(it) },
-                        colors = SwitchDefaults.colors(checkedThumbColor = IndigoPrimary)
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = MaterialTheme.colorScheme.primary
+                        )
                     )
                 }
             }
@@ -258,20 +261,20 @@ fun SettingsScreen(
             SettingsCard(
                 title = "Communication Policy & Audit",
                 icon = Icons.Default.Security,
-                iconColor = CyanAccent
+                iconColor = BrandSky
             ) {
                 Text(
                     text = "In compliance with Android security policies, CallMate AI strictly performs actions via assisted intents (ACTION_DIAL, ACTION_SENDTO, WhatsApp URI) with explicit user review.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
                 OutlinedButton(
                     onClick = { showAuditLogDialog = true },
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(14.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("View Execution Audit Log (${executions.size} entries)")
+                    Text("View Execution Audit Log (${executions.size} entries)", style = MaterialTheme.typography.labelMedium)
                 }
             }
         }
@@ -281,7 +284,7 @@ fun SettingsScreen(
             SettingsCard(
                 title = "Privacy & Data Storage",
                 icon = Icons.Default.Lock,
-                iconColor = RoseError
+                iconColor = ErrorRose
             ) {
                 Text(
                     text = "All scheduled tasks, messages, and contact nicknames remain securely persisted in your device's offline Room SQLite database.",
@@ -295,22 +298,22 @@ fun SettingsScreen(
                 ) {
                     OutlinedButton(
                         onClick = { viewModel.clearChatHistory() },
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.weight(1f)
                     ) {
                         Icon(Icons.Default.DeleteSweep, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Clear Chat", fontSize = 11.sp)
+                        Text("Clear Chat", style = MaterialTheme.typography.labelSmall)
                     }
 
                     OutlinedButton(
                         onClick = { viewModel.resetSampleData() },
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.weight(1f)
                     ) {
                         Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Reset Data", fontSize = 11.sp)
+                        Text("Reset Data", style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }
@@ -333,18 +336,24 @@ fun SettingsCard(
     content: @Composable () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant,
+                shape = RoundedCornerShape(22.dp)
+            ),
+        shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(18.dp)) {
+        Column(modifier = Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(iconColor.copy(alpha = 0.15f)),
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(iconColor.copy(alpha = 0.14f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -357,7 +366,7 @@ fun SettingsCard(
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
@@ -370,23 +379,23 @@ fun SettingsCard(
 @Composable
 fun LanguageOption(
     label: String,
-    code: String,
     isSelected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = if (isSelected) IndigoPrimary else MaterialTheme.colorScheme.surfaceVariant,
+        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+        border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = modifier.clickable(onClick = onClick)
     ) {
         Text(
             text = label,
             color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
-            fontSize = 11.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-            modifier = Modifier.padding(vertical = 10.dp),
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            modifier = Modifier.padding(vertical = 11.dp),
+            textAlign = TextAlign.Center
         )
     }
 }
@@ -400,16 +409,17 @@ fun ThemeOption(
 ) {
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = if (isSelected) CyanAccent else MaterialTheme.colorScheme.surfaceVariant,
+        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+        border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = modifier.clickable(onClick = onClick)
     ) {
         Text(
             text = label,
             color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
-            fontSize = 12.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-            modifier = Modifier.padding(vertical = 10.dp),
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            modifier = Modifier.padding(vertical = 11.dp),
+            textAlign = TextAlign.Center
         )
     }
 }
@@ -423,16 +433,17 @@ fun AiModelChip(
 ) {
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = if (isSelected) IndigoPrimary else MaterialTheme.colorScheme.surfaceVariant,
+        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+        border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = modifier.clickable(onClick = onClick)
     ) {
         Text(
             text = label,
             color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
-            fontSize = 11.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-            modifier = Modifier.padding(vertical = 8.dp),
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            modifier = Modifier.padding(vertical = 9.dp),
+            textAlign = TextAlign.Center
         )
     }
 }
@@ -444,16 +455,17 @@ fun AuditLogDialog(
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(modifier = Modifier.padding(20.dp)) {
+            Column(modifier = Modifier.padding(22.dp)) {
                 Text(
                     text = "Execution Audit Log",
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                    style = MaterialTheme.typography.titleLarge
                 )
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 if (executions.isEmpty()) {
                     Text(
@@ -465,36 +477,36 @@ fun AuditLogDialog(
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(260.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                            .height(280.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         items(executions) { log ->
                             Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                shape = RoundedCornerShape(14.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Column(modifier = Modifier.padding(10.dp)) {
+                                Column(modifier = Modifier.padding(12.dp)) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
                                         Text(
                                             text = log.actionType.name,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 12.sp,
-                                            color = IndigoPrimary
+                                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = MaterialTheme.colorScheme.primary
                                         )
                                         Text(
                                             text = log.resultOutcome,
-                                            fontSize = 11.sp,
-                                            color = EmeraldSuccess
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = SuccessGreen
                                         )
                                     }
                                     log.details?.let {
+                                        Spacer(modifier = Modifier.height(4.dp))
                                         Text(
                                             text = it,
-                                            fontSize = 11.sp,
+                                            style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
@@ -504,14 +516,14 @@ fun AuditLogDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(18.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("Close")
+                        Text("Close", style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }
