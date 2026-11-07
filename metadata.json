@@ -1,0 +1,6 @@
+{
+  "name": "CallMate AI",
+  "description": "Personal AI communication assistant for scheduled phone calls, SMS, WhatsApp, and reminders.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
