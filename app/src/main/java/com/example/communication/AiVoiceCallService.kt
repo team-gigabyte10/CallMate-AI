@@ -12,6 +12,8 @@ import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
+import android.media.MediaPlayer
+import android.media.audiofx.LoudnessEnhancer
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -42,6 +44,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.io.File
 import java.util.Locale
 
 class AiVoiceCallService : Service() {
@@ -97,6 +100,9 @@ class AiVoiceCallService : Service() {
     private var audioManager: AudioManager? = null
     private var textToSpeech: TextToSpeech? = null
     private var speechRecognizer: SpeechRecognizer? = null
+    private var mediaPlayer: MediaPlayer? = null
+    private var loudnessEnhancer: LoudnessEnhancer? = null
+    private var synthesizedIntroFile: File? = null
 
     private var taskId: String = ""
     private var phoneNumber: String = ""
@@ -146,6 +152,8 @@ class AiVoiceCallService : Service() {
             return START_NOT_STICKY
         }
 
+        synthesizeSpeechAudio()
+
         startForeground(NOTIFICATION_ID, buildForegroundNotification("Dialing $contactName on SIM... Tap 'Speak Now' when answered"))
         registerCallStateListener()
         placeCellularSimCall()
@@ -162,11 +170,13 @@ class AiVoiceCallService : Service() {
                 textToSpeech?.language = lang
 
                 val audioAttributes = AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                    .setUsage(AudioAttributes.USAGE_ALARM)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                    .setLegacyStreamType(AudioManager.STREAM_VOICE_CALL)
+                    .setLegacyStreamType(AudioManager.STREAM_ALARM)
                     .build()
                 textToSpeech?.setAudioAttributes(audioAttributes)
+
+                synthesizeSpeechAudio()
 
                 textToSpeech?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                     override fun onStart(utteranceId: String?) {
@@ -333,15 +343,12 @@ class AiVoiceCallService : Service() {
         }
     }
 
-    private fun speakAiIntroMessage() {
-        if (hasSpokenIntro) return
-        hasSpokenIntro = true
-        activateSpeakerphoneBridge()
-        updateNotification("Speaking to $contactName on your behalf...")
+    private fun synthesizeSpeechAudio() {
+        val tts = textToSpeech ?: return
+        if (!isTtsReady || taskId.isBlank()) return
 
         val preferences = PreferencesRepository(this)
         val isBengali = preferences.language.value == "BN"
-
         val spokenScript = if (isBengali) {
             buildString {
                 append("হ্যালো? ... হ্যালো! আমি কলমেট এআই সহকারী। ")
@@ -362,12 +369,114 @@ class AiVoiceCallService : Service() {
             }
         }
 
-        val params = Bundle().apply {
-            putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_VOICE_CALL)
-            putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f)
-            putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "utterance_intro")
+        try {
+            val file = File(cacheDir, "ai_intro_${System.currentTimeMillis()}.wav")
+            val params = Bundle().apply {
+                putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_ALARM)
+                putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f)
+                putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "synth_intro")
+            }
+            val result = tts.synthesizeToFile(spokenScript, params, file, "synth_intro")
+            if (result == TextToSpeech.SUCCESS) {
+                synthesizedIntroFile = file
+                Log.d(TAG, "Pre-synthesized speech audio to: ${file.absolutePath}")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error synthesizing speech to file: ${e.message}")
         }
-        textToSpeech?.speak(spokenScript, TextToSpeech.QUEUE_FLUSH, params, "utterance_intro")
+    }
+
+    private fun playAudioWithLoudnessBoost(file: File, onComplete: () -> Unit) {
+        try {
+            mediaPlayer?.release()
+            loudnessEnhancer?.release()
+
+            mediaPlayer = MediaPlayer().apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .setLegacyStreamType(AudioManager.STREAM_ALARM)
+                        .build()
+                )
+                setDataSource(file.absolutePath)
+                prepare()
+            }
+
+            try {
+                mediaPlayer?.audioSessionId?.let { sessionId ->
+                    loudnessEnhancer = LoudnessEnhancer(sessionId).apply {
+                        setTargetGain(1500) // +15 dB gain boost for acoustic bridge transmission
+                        enabled = true
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "LoudnessEnhancer error: ${e.message}")
+            }
+
+            mediaPlayer?.setOnCompletionListener {
+                Log.d(TAG, "MediaPlayer speech playback completed")
+                loudnessEnhancer?.release()
+                loudnessEnhancer = null
+                mediaPlayer?.release()
+                mediaPlayer = null
+                try { file.delete() } catch (_: Exception) {}
+                onComplete()
+            }
+
+            mediaPlayer?.start()
+            Log.d(TAG, "MediaPlayer playing speech with +15dB loudness boost via USAGE_ALARM")
+        } catch (e: Exception) {
+            Log.e(TAG, "MediaPlayer failed: ${e.message}, invoking onComplete")
+            onComplete()
+        }
+    }
+
+    private fun speakAiIntroMessage() {
+        if (hasSpokenIntro) return
+        hasSpokenIntro = true
+        activateSpeakerphoneBridge()
+        updateNotification("Speaking to $contactName on your behalf...")
+
+        val audioFile = synthesizedIntroFile
+        if (audioFile != null && audioFile.exists() && audioFile.length() > 0) {
+            playAudioWithLoudnessBoost(audioFile) {
+                mainHandler.post {
+                    startListeningForRecipientReply()
+                }
+            }
+        } else {
+            // Direct TTS playback with USAGE_ALARM (AEC exempt)
+            val preferences = PreferencesRepository(this)
+            val isBengali = preferences.language.value == "BN"
+
+            val spokenScript = if (isBengali) {
+                buildString {
+                    append("হ্যালো? ... হ্যালো! আমি কলমেট এআই সহকারী। ")
+                    append("আপনার সাথে যিনি যোগাযোগ করতে চেয়েছিলেন তিনি বর্তমানে একটি গুরুত্বপূর্ণ মিটিংয়ে আছেন। ")
+                    if (customMessage.isNotBlank()) {
+                        append("তার বার্তাটি হলো: $customMessage। আমি আবার বলছি: $customMessage। ")
+                    }
+                    append("অনুগ্রহ করে আপনার কোনো উত্তর থাকলে এখন বলুন, আমি তা সংরক্ষণ করে তাকে পৌঁছে দেব।")
+                }
+            } else {
+                buildString {
+                    append("Hello? ... Hello! This is CallMate AI assistant. ")
+                    append("The person calling you is currently occupied in an important meeting. ")
+                    if (customMessage.isNotBlank()) {
+                        append("Their message for you is: $customMessage. I repeat: $customMessage. ")
+                    }
+                    append("Please speak your response now and I will record it.")
+                }
+            }
+
+            val params = Bundle().apply {
+                putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_ALARM)
+                putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f)
+                putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "utterance_intro")
+            }
+            textToSpeech?.speak(spokenScript, TextToSpeech.QUEUE_FLUSH, params, "utterance_intro")
+        }
     }
 
     private fun startListeningForRecipientReply() {
@@ -447,7 +556,7 @@ class AiVoiceCallService : Service() {
         }
 
         val params = Bundle().apply {
-            putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_VOICE_CALL)
+            putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_ALARM)
             putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f)
             putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "utterance_goodbye")
         }
@@ -458,6 +567,12 @@ class AiVoiceCallService : Service() {
         if (hasCompletedSession) return
         hasCompletedSession = true
         isCallConnected = false
+
+        mediaPlayer?.release()
+        mediaPlayer = null
+        loudnessEnhancer?.release()
+        loudnessEnhancer = null
+        try { synthesizedIntroFile?.delete() } catch (_: Exception) {}
 
         // Disconnect cellular call if possible
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
